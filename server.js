@@ -24,6 +24,18 @@ const mimeTypes = {
   '.map': 'application/json; charset=utf-8'
 };
 
+function getCacheControl(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const base = path.basename(filePath).toLowerCase();
+
+  // These files change between deploys and are loaded by stable URLs.
+  if (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json' || base === 'service-worker.js') {
+    return 'no-cache';
+  }
+
+  return 'public, max-age=31536000, immutable';
+}
+
 function send(res, statusCode, headers, body) {
   res.writeHead(statusCode, headers);
   res.end(body);
@@ -140,7 +152,7 @@ const server = http.createServer((req, res) => {
       200,
       {
         'Content-Type': mimeTypes[ext] || 'application/octet-stream',
-        'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable'
+        'Cache-Control': getCacheControl(filePath)
       },
       data
     );
