@@ -2,11 +2,11 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
+const cors = require('cors');
 
 const host = '0.0.0.0';
-const port = Number(process.env.PORT || 3000);
-const publicDir = path.join(__dirname, 'www');
-const movieApiBaseUrl = (process.env.MOVIE_API_BASE_URL || 'https://darkvibe314-silent-movies-api.hf.space').replace(/\/+$/, '');
+const PORT = process.env.PORT || 3000;
+const publicDir = __dirname;
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -41,36 +41,7 @@ function send(res, statusCode, headers, body) {
   res.end(body);
 }
 
-async function proxyMovieRequest(res, targetUrl) {
-  try {
-    const upstream = await fetch(targetUrl, {
-      headers: { 'Accept': 'application/json' }
-    });
 
-    const body = await upstream.text();
-
-    send(
-      res,
-      upstream.status,
-      {
-        'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store'
-      },
-      body
-    );
-  } catch (error) {
-    send(
-      res,
-      502,
-      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
-      JSON.stringify({
-        error: 'Movie upstream unavailable',
-        message: error.message,
-        upstream: movieApiBaseUrl
-      })
-    );
-  }
-}
 
 function safePath(urlPath) {
   const decoded = decodeURIComponent(urlPath.split('?')[0]);
@@ -97,6 +68,17 @@ function resolveFile(urlPath) {
 }
 
 const server = http.createServer((req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+  
   if (!req.url) {
     send(res, 400, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Bad Request');
     return;
@@ -114,29 +96,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (requestUrl.pathname === '/api/movie-search') {
-    const query = requestUrl.searchParams.get('query') || 'popular';
-    const targetUrl = `${movieApiBaseUrl}/api/search?query=${encodeURIComponent(query)}`;
-    proxyMovieRequest(res, targetUrl);
-    return;
-  }
 
-  if (requestUrl.pathname === '/api/movie-download') {
-    const movieId = requestUrl.searchParams.get('movie_id');
-    if (!movieId) {
-      send(
-        res,
-        400,
-        { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
-        JSON.stringify({ error: 'movie_id is required' })
-      );
-      return;
-    }
-
-    const targetUrl = `${movieApiBaseUrl}/api/download?movie_id=${encodeURIComponent(movieId)}`;
-    proxyMovieRequest(res, targetUrl);
-    return;
-  }
 
   const filePath = resolveFile(requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname);
 
@@ -159,6 +119,6 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(port, host, () => {
-  console.log(`ZYNREST listening on http://${host}:${port}`);
+server.listen(PORT, host, () => {
+  console.log(`Server running on port ${PORT}`);
 });
