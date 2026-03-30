@@ -91,7 +91,7 @@ const server = http.createServer((req, res) => {
       res,
       200,
       { 'Content-Type': 'application/json; charset=utf-8' },
-      JSON.stringify({ status: 'ok', movieApiBaseUrl })
+      JSON.stringify({ status: 'ok' })
     );
     return;
   }
