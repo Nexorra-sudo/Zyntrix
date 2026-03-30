@@ -216,6 +216,7 @@ let activeItem = null;
 let activeMovie = null;
 let currentMode = 'images';
 let movieModalRequestId = 0;
+const movieApiBasePath = '/api';
 
 function extractMovieSource(data) {
   if (!data || typeof data !== 'object') return null;
@@ -366,7 +367,7 @@ function buildSearchGallery(query) {
 
 async function fetchMovieData(query = 'popular') {
   const normalized = query.trim() || 'popular';
-  const apiUrl = `https://darkvibe314-silent-movies-api.hf.space/api/search?query=${encodeURIComponent(normalized)}`;
+  const apiUrl = `${movieApiBasePath}/movie-search?query=${encodeURIComponent(normalized)}`;
   try {
     const res = await fetch(apiUrl, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error(`Movie API returned ${res.status}`);
@@ -399,7 +400,7 @@ async function getMovieSource(movie) {
   if (movie.sourceChecked && !movie.videoSrc) return null;
 
   try {
-    const downloadUrl = `https://darkvibe314-silent-movies-api.hf.space/api/download?movie_id=${encodeURIComponent(movie.id)}`;
+    const downloadUrl = `${movieApiBasePath}/movie-download?movie_id=${encodeURIComponent(movie.id)}`;
     const res = await fetch(downloadUrl, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error(`Source API returned ${res.status}`);
     const data = await res.json();

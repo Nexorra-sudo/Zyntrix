@@ -1,10 +1,12 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { URL } = require('url');
 
 const host = '0.0.0.0';
 const port = Number(process.env.PORT || 3000);
 const publicDir = path.join(__dirname, 'www');
+const movieApiBaseUrl = (process.env.MOVIE_API_BASE_URL || 'https://darkvibe314-silent-movies-api.hf.space').replace(/\/+$/, '');
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -25,6 +27,37 @@ const mimeTypes = {
 function send(res, statusCode, headers, body) {
   res.writeHead(statusCode, headers);
   res.end(body);
+}
+
+async function proxyMovieRequest(res, targetUrl) {
+  try {
+    const upstream = await fetch(targetUrl, {
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const body = await upstream.text();
+
+    send(
+      res,
+      upstream.status,
+      {
+        'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      },
+      body
+    );
+  } catch (error) {
+    send(
+      res,
+      502,
+      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+      JSON.stringify({
+        error: 'Movie upstream unavailable',
+        message: error.message,
+        upstream: movieApiBaseUrl
+      })
+    );
+  }
 }
 
 function safePath(urlPath) {
@@ -57,17 +90,43 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (req.url === '/health') {
+  const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+  if (requestUrl.pathname === '/health') {
     send(
       res,
       200,
       { 'Content-Type': 'application/json; charset=utf-8' },
-      JSON.stringify({ status: 'ok' })
+      JSON.stringify({ status: 'ok', movieApiBaseUrl })
     );
     return;
   }
 
-  const filePath = resolveFile(req.url === '/' ? '/index.html' : req.url);
+  if (requestUrl.pathname === '/api/movie-search') {
+    const query = requestUrl.searchParams.get('query') || 'popular';
+    const targetUrl = `${movieApiBaseUrl}/api/search?query=${encodeURIComponent(query)}`;
+    proxyMovieRequest(res, targetUrl);
+    return;
+  }
+
+  if (requestUrl.pathname === '/api/movie-download') {
+    const movieId = requestUrl.searchParams.get('movie_id');
+    if (!movieId) {
+      send(
+        res,
+        400,
+        { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+        JSON.stringify({ error: 'movie_id is required' })
+      );
+      return;
+    }
+
+    const targetUrl = `${movieApiBaseUrl}/api/download?movie_id=${encodeURIComponent(movieId)}`;
+    proxyMovieRequest(res, targetUrl);
+    return;
+  }
+
+  const filePath = resolveFile(requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname);
 
   fs.readFile(filePath, (error, data) => {
     if (error) {
