@@ -1,0 +1,39 @@
+{
+  "name": "zynrest",
+  "version": "1.0.0",
+  "description": "ZYNREST - Premium Pinterest-style image gallery with search and download",
+  "main": "index.html",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "live-server --port=8000 --host=localhost --open=/",
+    "build": "node sync-web.js",
+    "serve": "npm run start"
+  },
+  "keywords": [
+    "pwa",
+    "image-gallery",
+    "pinterest-clone",
+    "zynrest"
+  ],
+  "author": "ZYNREST Team",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/zynrest.git"
+  },
+  "homepage": "https://zynrest.app",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@capacitor-community/electron": "^5.0.1",
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "appId": "com.zynrest.app",
+  "appName": "ZYNREST",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#120a2a",
+      "spinnerColor": "#8b5cf6"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

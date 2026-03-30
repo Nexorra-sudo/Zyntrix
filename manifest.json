@@ -1,0 +1,18 @@
+{
+  "name": "ZYNREST",
+  "short_name": "Zynrest",
+  "description": "Pinterest-style image viewer with search and download.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#1b1138",
+  "theme_color": "#8d51ff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=512&q=80&fm=png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

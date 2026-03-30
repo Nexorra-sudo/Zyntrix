@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1b1138">
+  <meta name="description" content="ZYNTRIX is the 2 in 1 cinematic plus photo genic assistant for browsing movies and visuals in one place.">
+  <title>ZYNREST • Image Gallery</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=512&q=80&fm=png" type="image/png">
+  <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=512&q=80&fm=png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="intro" class="intro">
+    <div class="intro-content">
+      <div class="brand-mark intro-logo">Z</div>
+      <h1 class="intro-title">ZYNTRIX</h1>
+      <p class="intro-subtitle">The 2 in 1 cinematic + photo genic assistant.</p>
+      <div class="intro-loader"></div>
+    </div>
+  </div>
+
+  <div class="app-shell" id="appShell" style="display: none;">
+    <header class="topbar hidden">
+      <div class="brand">
+        <div class="brand-mark">Z</div>
+        <div>
+          <h1>ZYNTRIX</h1>
+          <p>The 2 in 1 cinematic + photo genic assistant.</p>
+        </div>
+      </div>
+
+      <div class="search-panel">
+        <label class="search-label" for="searchInput">Search images</label>
+        <div class="search-box">
+          <input id="searchInput" type="search" placeholder="Search by keyword, theme, or mood" autocomplete="off">
+          <button id="searchButton" aria-label="Search images">Search</button>
+        </div>
+      </div>
+
+      <button id="installBtn" class="install-btn hidden" aria-label="Install ZYNTRIX">Install ZYNTRIX</button>
+      <button id="changeModeBtn" class="secondary-btn hidden" aria-label="Switch experience">Switch Experience</button>
+    </header>
+
+    <div id="viewSelect" class="view-select">
+      <div class="view-select-card">
+        <h2>Which are you looking for today?</h2>
+        <p>Choose the experience you want:</p>
+        <div class="view-options">
+          <button id="selectPictures" type="button" class="option-card active">Pictures View</button>
+          <button id="selectCinema" type="button" class="option-card">Cinematic Section</button>
+        </div>
+      </div>
+    </div>
+
+    <main id="imageView" class="hidden">
+      <section class="hero-card">
+        <div>
+          <p class="eyebrow">Zynrest Gallery</p>
+          <h2>Browse, search, and download beautiful photos instantly.</h2>
+          <p>Create your own visual board with the feel of Pinterest — now installable as a PWA.</p>
+        </div>
+      </section>
+
+      <section id="gallery" class="gallery"></section>
+      <div id="emptyState" class="empty-state hidden">No results found. Try another search term.</div>
+    </main>
+
+    <main id="cinemaView" class="hidden">
+      <section class="cinema-hero">
+        <div class="cinema-hero-copy">
+          <p class="eyebrow">ZYNIFLIX</p>
+          <h2>Stream movies in cinematic style.</h2>
+          <p>Search, browse, and play the latest titles — with a Netflix-inspired movie experience.</p>
+        </div>
+      </section>
+
+      <section id="cinemaContent" class="cinema-content">
+        <div id="cinemaRows"></div>
+        <div id="movieResults" class="movie-grid hidden"></div>
+        <div id="emptyCinemaState" class="empty-state hidden">No results found. Try another search term.</div>
+      </section>
+    </main>
+
+    <div id="previewModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-backdrop" id="modalClose"></div>
+      <div class="modal-card">
+        <button class="close-btn" id="closeModal" aria-label="Close preview">×</button>
+        <img id="previewImage" alt="Preview image">
+        <div class="modal-meta">
+          <h3 id="modalTitle"></h3>
+          <p id="modalTags"></p>
+          <div class="modal-actions">
+            <button id="downloadButton" class="primary-btn">Download</button>
+            <a id="openButton" class="secondary-btn" target="_blank" rel="noreferrer noopener">Open Original</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="movieModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="movieModalTitle">
+      <div class="modal-backdrop" id="movieModalClose"></div>
+      <div class="modal-card">
+        <button class="close-btn" id="movieModalCloseBtn" aria-label="Close movie">×</button>
+        <video id="moviePlayer" controls playsinline webkit-playsinline preload="metadata" class="movie-player"></video>
+        <div class="modal-meta">
+          <h3 id="movieModalTitle"></h3>
+          <p id="movieModalGenre"></p>
+          <p id="movieModalDesc"></p>
+          <div class="modal-actions">
+            <button id="moviePlayButton" class="primary-btn">Play</button>
+            <button id="movieDownloadButton" class="secondary-btn">Download Movie</button>
+            <a id="movieOpenButton" class="secondary-btn" target="_blank" rel="noreferrer noopener">Open Detail</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
