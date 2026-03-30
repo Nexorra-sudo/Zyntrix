@@ -140,6 +140,22 @@ const movieCategories = [
 
 let deferredPrompt = null;
 
+// Cineverse API Configuration
+const cineverseApiHeaders = {
+  'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
+  'Referer': 'https://cineverse.name.ng/',
+  'Origin': 'https://cineverse.name.ng',
+  'Accept': 'application/json'
+};
+
+const cineverseVideoHeaders = {
+  'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
+  'Accept': '*/*',
+  'Connection': 'keep-alive'
+};
+
+const CINEVERSE_API_BASE = 'https://moviebox.davidcyril.name.ng/api';
+
 function getImageUrl(item) {
   const query = (item.query || item.title || 'photo').trim().replace(/\s+/g, ',');
   return item.imageUrl || `https://loremflickr.com/600/900/${encodeURIComponent(query)}?lock=${item.id}`;
@@ -367,29 +383,29 @@ function buildSearchGallery(query) {
 
 async function fetchMovieData(query = 'popular') {
   const normalized = query.trim() || 'popular';
-  const apiUrl = `${movieApiBasePath}/movie-search?query=${encodeURIComponent(normalized)}`;
+  const apiUrl = `${CINEVERSE_API_BASE}/search/${encodeURIComponent(normalized)}`;
   try {
-    const res = await fetch(apiUrl, { headers: { 'Accept': 'application/json' } });
-    if (!res.ok) throw new Error(`Movie API returned ${res.status}`);
+    const res = await fetch(apiUrl, { headers: cineverseApiHeaders });
+    if (!res.ok) throw new Error(`Cineverse API returned ${res.status}`);
     const data = await res.json();
-    if (!Array.isArray(data.results)) return [];
+    const items = data.data?.items || [];
 
-    return data.results
-      .filter(item => item.hasResource === true)
-      .map((item, index) => ({
-        id: item.subjectId || `api-${index}`,
-        title: item.title || 'Untitled',
-        year: item.releaseDate ? item.releaseDate.split('-')[0] : 'Unknown',
-        genre: item.genre || 'Unknown',
-        description: item.description || item.postTitle || 'No description available.',
-        poster: item.cover?.url || item.thumbnail || 'https://via.placeholder.com/320x480?text=No+Image',
-        videoSrc: '',
-        detailUrl: item.detailPath ? `https://moviebox.ph/detail/${item.detailPath}` : 'https://moviebox.ph',
-        category: item.subjectType === 2 ? 'Series' : 'Movie',
-        hasResource: true
-      }));
+    return items.map((item, index) => ({
+      id: item.subjectId || `api-${index}`,
+      title: item.title || 'Untitled',
+      year: item.releaseDate ? item.releaseDate.split('-')[0] : 'Unknown',
+      genre: item.genres?.join(', ') || 'Unknown',
+      description: item.description || 'No description available.',
+      poster: item.cover?.url || item.thumbnail || 'https://via.placeholder.com/320x480?text=No+Image',
+      videoSrc: '',
+      detailUrl: `https://cineverse.name.ng/${item.subjectType === 1 ? 'movie' : 'tv'}/${item.subjectId}`,
+      category: item.subjectType === 2 ? 'Series' : 'Movie',
+      hasResource: true,
+      subjectId: item.subjectId,
+      subjectType: item.subjectType
+    }));
   } catch (err) {
-    console.warn('Movie API error', err);
+    console.warn('Cineverse API error', err);
     return [];
   }
 }
@@ -400,19 +416,34 @@ async function getMovieSource(movie) {
   if (movie.sourceChecked && !movie.videoSrc) return null;
 
   try {
-    const downloadUrl = `${movieApiBasePath}/movie-download?movie_id=${encodeURIComponent(movie.id)}`;
-    const res = await fetch(downloadUrl, { headers: { 'Accept': 'application/json' } });
+    const subjectId = movie.subjectId || movie.id;
+    const isTv = movie.subjectType === 2;
+    
+    let sourceUrl = `${CINEVERSE_API_BASE}/sources/${subjectId}`;
+    if (isTv) sourceUrl += '?season=1&episode=1';
+    
+    const res = await fetch(sourceUrl, { headers: cineverseApiHeaders });
     if (!res.ok) throw new Error(`Source API returned ${res.status}`);
     const data = await res.json();
-    const source = extractMovieSource(data);
-    if (source) {
-      movie.videoSrc = source;
-      movie.subtitleUrl = data.subtitle_url || '';
+    const srcData = data.data || data;
+    
+    // Find stream URL
+    let targetUrl = null;
+    if (srcData.processedSources?.[0]) {
+      targetUrl = srcData.processedSources[0].downloadUrl || srcData.processedSources[0].directUrl;
+    } else if (srcData.downloads?.[0]) {
+      targetUrl = srcData.downloads[0].url;
+    } else if (srcData.url) {
+      targetUrl = srcData.url;
+    }
+    
+    if (targetUrl) {
+      movie.videoSrc = targetUrl;
       movie.hasResource = true;
       return movie.videoSrc;
     }
   } catch (err) {
-    console.warn('Source fetch error', err);
+    console.warn('Cineverse source fetch error', err);
   }
   movie.sourceChecked = true;
   movie.hasResource = false;
@@ -777,3 +808,57 @@ if ('serviceWorker' in navigator) {
 
 showIntro();
 showSelection();
+
+// Load trending movies on home page
+async function loadHomeCinema() {
+  const homeCinemaRows = document.getElementById('homeCinemaRows');
+  if (!homeCinemaRows) return;
+  
+  homeCinemaRows.innerHTML = '<p class="loading-text">Loading trending movies...</p>';
+  
+  try {
+    const trendingMovies = await fetchMovieData('trending');
+    
+    if (trendingMovies.length === 0) {
+      homeCinemaRows.innerHTML = '<p class="loading-text">No movies available at the moment.</p>';
+      return;
+    }
+    
+    // Create a horizontal scrollable row of movies
+    const row = document.createElement('div');
+    row.className = 'home-cinema-row';
+    
+    trendingMovies.slice(0, 10).forEach(movie => {
+      const card = document.createElement('article');
+      card.className = 'home-movie-card';
+      card.dataset.movieId = movie.id;
+      card.innerHTML = `
+        <img src="${movie.poster}" alt="${movie.title}" loading="lazy" />
+        <div class="home-movie-overlay">
+          <span>▶ Play</span>
+        </div>
+        <div class="home-movie-info">
+          <h4>${movie.title}</h4>
+          <p>${movie.year}</p>
+        </div>
+      `;
+      
+      card.addEventListener('click', () => {
+        enterMode('cinema');
+        setTimeout(() => openMovieModal(movie.id), 300);
+      });
+      
+      row.appendChild(card);
+    });
+    
+    homeCinemaRows.innerHTML = '';
+    homeCinemaRows.appendChild(row);
+    
+  } catch (err) {
+    console.error('Home cinema error:', err);
+    homeCinemaRows.innerHTML = '<p class="loading-text">Unable to load movies. Please try again later.</p>';
+  }
+}
+
+// Load home cinema when page loads
+loadHomeCinema();

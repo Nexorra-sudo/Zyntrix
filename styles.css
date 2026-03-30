@@ -646,6 +646,129 @@ body::before {
   padding: 20px;
 }
 
+/* Home Cinema Section Styles */
+.home-cinema-section {
+  margin-top: 40px;
+  padding: 30px 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.home-cinema-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.home-cinema-header h3 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.home-cinema-header p {
+  margin: 0;
+  color: #d1cffd;
+  font-size: 0.95rem;
+}
+
+.home-cinema-rows {
+  overflow-x: auto;
+  padding-bottom: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.5) transparent;
+}
+
+.home-cinema-rows::-webkit-scrollbar {
+  height: 8px;
+}
+
+.home-cinema-rows::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.home-cinema-rows::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 4px;
+}
+
+.home-cinema-row {
+  display: flex;
+  gap: 16px;
+  padding: 8px 4px;
+}
+
+.home-movie-card {
+  flex: 0 0 180px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #100b29;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-movie-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 32px rgba(139, 92, 246, 0.3);
+}
+
+.home-movie-card img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  display: block;
+}
+
+.home-movie-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 8, 22, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.home-movie-card:hover .home-movie-overlay {
+  opacity: 1;
+}
+
+.home-movie-overlay span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #8b5cf6, #4f46e5);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+}
+
+.home-movie-info {
+  padding: 14px 12px;
+}
+
+.home-movie-info h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  color: #f8faff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-movie-info p {
+  margin: 0;
+  color: #c4c2eb;
+  font-size: 0.85rem;
+}
+
 @media (min-width: 761px) and (max-width: 1180px) {
   .app-shell { padding: 22px 18px 36px; }
   .topbar { gap: 14px; }
