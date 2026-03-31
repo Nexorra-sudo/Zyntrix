@@ -1511,7 +1511,7 @@ body::before {
   .featured-hero,
   .home-cinema-section { padding: 18px 16px; border-radius: 24px; }
   .gallery-hero,
-  .cinema-hero { grid-template-columns: 1fr; gap: 18px; }
+  .cinema-hero { grid-template-columns: minmax(0, 1.15fr) minmax(180px, 280px); gap: 18px; }
   .hero-visual { min-height: 260px; }
   .hero-visual-frame { min-height: 260px; border-radius: 24px; }
   .hero-visual-card { font-size: 0.85rem; }
@@ -1525,7 +1525,7 @@ body::before {
   }
   .gallery { column-count: 1; }
   .featured-hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1.3fr) minmax(160px, 240px);
     gap: 18px;
     min-height: 0;
     align-items: center;

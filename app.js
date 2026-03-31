@@ -753,7 +753,9 @@ function renderEpisodeSelector(movie) {
     button.addEventListener('click', async () => {
       selectedEpisode = episode;
       renderEpisodeSelector(movie);
-      resetPlayerSurface();
+      revealPlayerSurface();
+      setMovieModalState(`${movie.description}\n\nLoading Season ${selectedSeason}, Episode ${selectedEpisode}...`);
+      await loadSelectedPlayback(movie, { autoplay: true });
     });
     episodeList.appendChild(button);
   }
@@ -1203,52 +1205,7 @@ function renderMovieResults(items) {
   startFeaturedSlideshow(playable);
 }
 
-async function openMovieModal(movieId) {
-  const movie = movies.find(item => String(item.id) === String(movieId));
-  if (!movie) return;
 
-  const requestId = ++movieModalRequestId;
-  activeMovie = movie;
-  moviePlayer.pause();
-  moviePlayer.removeAttribute('src');
-  moviePlayer.load();
-  moviePlayer.poster = movie.poster;
-  if (movieDetailPoster) {
-    movieDetailPoster.src = movie.poster;
-    movieDetailPoster.alt = `${movie.title} poster`;
-  }
-  if (movieDetailBackdrop) {
-    movieDetailBackdrop.style.backgroundImage = `url("${movie.poster}")`;
-  }
-  movieModalTitle.textContent = movie.title;
-  movieModalGenre.textContent = `${movie.genre} - ${movie.year}`;
-  movieModalGenre.textContent = `${movie.genre} • ${movie.year}`;
-  movieModalGenre.textContent = `${movie.genre} • ${movie.year}`;
-  movieModalGenre.textContent = `${movie.genre} • ${movie.year}`;
-  movieModalDesc.textContent = movie.description;
-  movieModal.classList.remove('hidden');
-  moviePlayButton.disabled = true;
-  movieDownloadButton.disabled = true;
-
-  if (movie.videoSrc) {
-    await applyMovieSource(movie, movie.videoSrc, { autoplay: true });
-    return;
-  }
-
-  setMovieModalState(`${movie.description}\n\nPreparing the player...`);
-
-  const source = await getMovieSource(movie);
-  if (requestId !== movieModalRequestId || activeMovie?.id !== movie.id) return;
-
-  if (source) {
-    await applyMovieSource(movie, source, { autoplay: true });
-  } else {
-    setMovieModalState(
-      `${movie.description}\n\nThis title is not ready for direct playback right now. Try downloading it instead.`,
-      'error'
-    );
-  }
-}
 
 function closeMovieModal() {
   movieModalRequestId += 1;
@@ -1563,7 +1520,9 @@ seasonSelect?.addEventListener('change', async () => {
   selectedSeason = Number(seasonSelect.value || 1);
   selectedEpisode = 1;
   renderEpisodeSelector(activeMovie);
-  resetPlayerSurface();
+  revealPlayerSurface();
+  setMovieModalState(`${activeMovie.description}\n\nLoading Season ${selectedSeason}, Episode ${selectedEpisode}...`);
+  await loadSelectedPlayback(activeMovie, { autoplay: true });
 });
 
 selectPictures.addEventListener('click', () => enterMode('images'));
