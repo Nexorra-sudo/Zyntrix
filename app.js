@@ -269,7 +269,9 @@ let currentPlaybackBundle = null;
 let selectedSeason = 1;
 let selectedEpisode = 1;
 let subtitlesEnabled = false;
+let lastSavedPlaybackMark = '';
 const movieApiBasePath = '/api';
+const WATCH_HISTORY_KEY = 'zyntrix-watch-history-v1';
 
 function extractMovieSource(data) {
   if (!data || typeof data !== 'object') return null;
@@ -411,11 +413,171 @@ function normalizeSourceBundle(data) {
   return bundle;
 }
 
+function loadWatchHistory() {
+  try {
+    const raw = localStorage.getItem(WATCH_HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('Watch history load error', error);
+    return [];
+  }
+}
+
+function saveWatchHistory(items) {
+  try {
+    localStorage.setItem(WATCH_HISTORY_KEY, JSON.stringify(items.slice(0, 24)));
+  } catch (error) {
+    console.warn('Watch history save error', error);
+  }
+}
+
+function buildPlaybackHistoryKey(movie, season = 1, episode = 1) {
+  return `${movie?.id || 'movie'}:${season}:${episode}`;
+}
+
+function getStoredPlaybackState(movie) {
+  if (!movie) return null;
+  const history = loadWatchHistory();
+  return history.find(item => String(item.movieId) === String(movie.id)) || null;
+}
+
+function persistWatchState(movie, { completed = false } = {}) {
+  if (!movie || !moviePlayer) return;
+
+  const duration = Number.isFinite(moviePlayer.duration) ? moviePlayer.duration : 0;
+  const progress = Number.isFinite(moviePlayer.currentTime) ? moviePlayer.currentTime : 0;
+  if (!duration && !progress) return;
+
+  const history = loadWatchHistory();
+  const entryKey = buildPlaybackHistoryKey(movie, selectedSeason, selectedEpisode);
+  const filtered = history.filter(item => item.key !== entryKey);
+  const progressPercent = duration > 0 ? Math.min(100, Math.round((progress / duration) * 100)) : 0;
+
+  filtered.unshift({
+    key: entryKey,
+    movieId: movie.id,
+    title: movie.title,
+    poster: movie.poster,
+    genre: movie.genre,
+    year: movie.year,
+    category: movie.category,
+    subjectType: movie.subjectType,
+    season: selectedSeason,
+    episode: selectedEpisode,
+    progress,
+    duration,
+    progressPercent: completed ? 100 : progressPercent,
+    completed,
+    updatedAt: Date.now()
+  });
+
+  saveWatchHistory(filtered);
+}
+
+function getContinueWatchingItems(items = movies) {
+  const history = loadWatchHistory()
+    .filter(item => !item.completed && item.progressPercent >= 5 && item.progressPercent < 98)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return history.map(entry => {
+    const liveMovie = items.find(movie => String(movie.id) === String(entry.movieId));
+    if (!liveMovie) return null;
+
+    return {
+      ...liveMovie,
+      progressPercent: entry.progressPercent,
+      continueLabel: liveMovie.subjectType === 2
+        ? `Continue S${entry.season} E${entry.episode}`
+        : `Continue from ${entry.progressPercent}%`
+    };
+  }).filter(Boolean);
+}
+
+function getBecauseYouWatchedConfig(items = movies) {
+  const history = loadWatchHistory()
+    .filter(item => item.progressPercent >= 10)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  const seed = history[0];
+  if (!seed) return null;
+
+  const watchedIds = new Set(history.map(item => String(item.movieId)));
+  const seedGenres = String(seed.genre || '')
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  const recommendations = items.filter(movie => {
+    if (watchedIds.has(String(movie.id))) return false;
+    const movieGenres = String(movie.genre || '').toLowerCase();
+    if (seedGenres.some(genre => movieGenres.includes(genre))) return true;
+    return seed.category && movie.category === seed.category;
+  }).slice(0, 12);
+
+  if (!recommendations.length) return null;
+
+  const label = seedGenres[0]
+    ? `${seedGenres[0].charAt(0).toUpperCase()}${seedGenres[0].slice(1)}`
+    : (seed.category || 'this');
+
+  return {
+    title: `Because You Watched ${seed.title}`,
+    description: `More ${label} picks based on what you played recently.`,
+    items: recommendations
+  };
+}
+
+function renderPersonalizedRows(items = movies) {
+  if (!cinemaRows) return;
+
+  cinemaRows.querySelectorAll('[data-personalized-row="true"]').forEach(node => node.remove());
+
+  const continueWatching = getContinueWatchingItems(items);
+  if (continueWatching.length) {
+    const row = buildMovieRow(
+      'Continue Watching',
+      continueWatching,
+      'Jump back into what you started right after the hero banner.'
+    );
+    row.dataset.personalizedRow = 'true';
+    row.classList.add('personalized-row');
+    cinemaRows.prepend(row);
+  }
+
+  const becauseYouWatched = getBecauseYouWatchedConfig(items);
+  if (becauseYouWatched?.items?.length) {
+    const row = buildMovieRow(
+      becauseYouWatched.title,
+      becauseYouWatched.items,
+      becauseYouWatched.description
+    );
+    row.dataset.personalizedRow = 'true';
+    row.classList.add('personalized-row');
+    cinemaRows.insertBefore(row, cinemaRows.children[continueWatching.length ? 1 : 0] || null);
+  }
+}
+
 function setMovieModalState(message, state = 'loading') {
   movieModalDesc.textContent = message;
   moviePlayButton.disabled = true;
   movieDownloadButton.disabled = true;
   movieModal.dataset.state = state;
+}
+
+function syncActiveWatchState({ completed = false, force = false } = {}) {
+  if (!activeMovie || !moviePlayer) return;
+
+  const currentSecond = Math.floor(Number.isFinite(moviePlayer.currentTime) ? moviePlayer.currentTime : 0);
+  const mark = `${activeMovie.id}:${selectedSeason}:${selectedEpisode}:${currentSecond}:${completed}`;
+  if (!force && mark === lastSavedPlaybackMark) return;
+
+  persistWatchState(activeMovie, { completed });
+  lastSavedPlaybackMark = mark;
+
+  if (currentMode === 'cinema' && movieResults.classList.contains('hidden')) {
+    renderPersonalizedRows(movies);
+  }
 }
 
 async function startMoviePlayback() {
@@ -774,6 +936,10 @@ function getFeaturedMovie(items = movies) {
   return items.find(movie => movie.category === 'Trending') || items[0];
 }
 
+function prefersMotion() {
+  return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 function renderFeaturedHero(movie) {
   featuredMovie = movie || getFeaturedMovie();
   if (!featuredHero || !featuredMovie) return;
@@ -814,6 +980,8 @@ function startFeaturedSlideshow(items = movies) {
   featuredHeroIndex = Math.max(0, featuredHeroItems.findIndex(movie => String(movie.id) === String(initialMovie?.id)));
   renderFeaturedHero(featuredHeroItems[featuredHeroIndex]);
 
+  if (!prefersMotion()) return;
+
   featuredHeroTimer = setInterval(() => {
     featuredHeroIndex = (featuredHeroIndex + 1) % featuredHeroItems.length;
     renderFeaturedHero(featuredHeroItems[featuredHeroIndex]);
@@ -827,7 +995,7 @@ function stopRailAutoScroll(rail) {
 }
 
 function prefersRailAutoScroll() {
-  return !window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+  return prefersMotion();
 }
 
 function startRailAutoScroll(rail) {
@@ -835,19 +1003,22 @@ function startRailAutoScroll(rail) {
   if (!prefersRailAutoScroll()) return;
   if (rail.scrollWidth - rail.clientWidth <= 24) return;
 
+  const isMobileRail = window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+  const step = isMobileRail ? 0.75 : 0.55;
+  const delay = isMobileRail ? 16 : 20;
   rail.dataset.direction = rail.dataset.direction || '1';
   const timerId = setInterval(() => {
     if (rail.dataset.visible !== 'true' || rail.dataset.paused === 'true') return;
 
     const maxScroll = rail.scrollWidth - rail.clientWidth;
     let direction = Number(rail.dataset.direction || '1');
-    rail.scrollLeft += direction;
+    rail.scrollLeft += direction * step;
 
     if (rail.scrollLeft >= maxScroll - 4) direction = -1;
     if (rail.scrollLeft <= 4) direction = 1;
 
     rail.dataset.direction = String(direction);
-  }, 20);
+  }, delay);
 
   rail.dataset.timerId = String(timerId);
 }
@@ -889,6 +1060,17 @@ function setupRailAutoScroll(rail) {
 }
 
 function buildMovieCard(movie, compact = false) {
+  const progressMarkup = Number.isFinite(movie.progressPercent) && movie.progressPercent > 0
+    ? `
+        <div class="movie-card-progress">
+          <span>${movie.continueLabel || `${movie.progressPercent}% watched`}</span>
+          <div class="movie-card-progress-track">
+            <div class="movie-card-progress-bar" style="width: ${Math.min(100, movie.progressPercent)}%"></div>
+          </div>
+        </div>
+      `
+    : '';
+
   return `
     <article class="movie-card${compact ? ' compact' : ''}" data-movie-id="${movie.id}">
       <div class="movie-card-poster">
@@ -901,6 +1083,7 @@ function buildMovieCard(movie, compact = false) {
         <h4>${movie.title}</h4>
         <p>${movie.genre}</p>
         <small>${movie.year || 'Now Showing'}</small>
+        ${progressMarkup}
       </div>
     </article>
   `;
@@ -908,7 +1091,7 @@ function buildMovieCard(movie, compact = false) {
 
 function buildMovieRow(title, entries, description = 'Curated movies for your next watch.', bindClicks = true) {
   const row = document.createElement('section');
-  row.className = 'movie-row';
+  row.className = 'movie-row boxed-row';
   row.innerHTML = `
     <div class="row-header">
       <div>
@@ -989,11 +1172,13 @@ async function renderCinemaHome() {
       cinemaRows.appendChild(buildMovieRow(category.title, entries.slice(0, 12), 'Offline picks curated for this genre.'));
     });
     startFeaturedSlideshow(movies);
+    renderPersonalizedRows(movies);
     return;
   }
 
   movies = dedupeMovies(liveSections.flatMap(section => section.items));
   startFeaturedSlideshow(movies);
+  renderPersonalizedRows(movies);
 
   liveSections.forEach(section => {
     cinemaRows.appendChild(buildMovieRow(section.title, section.items, section.description));
@@ -1223,9 +1408,11 @@ async function openMovieModal(movieId) {
   if (!movie) return;
 
   const requestId = ++movieModalRequestId;
+  const savedState = getStoredPlaybackState(movie);
+  lastSavedPlaybackMark = '';
   activeMovie = movie;
-  selectedSeason = 1;
-  selectedEpisode = 1;
+  selectedSeason = savedState?.season || 1;
+  selectedEpisode = savedState?.episode || 1;
   subtitlesEnabled = false;
   resetPlayerSurface();
   moviePlayer.poster = movie.poster;
@@ -1244,17 +1431,38 @@ async function openMovieModal(movieId) {
   movieModalDesc.textContent = movie.description;
   renderEpisodeSelector(movie);
   movieModal.classList.remove('hidden');
-  moviePlayButton.disabled = false;
-  movieDownloadButton.disabled = false;
-  movieModal.dataset.state = 'idle';
+  revealPlayerSurface();
+  setMovieModalState(`${movie.description}\n\nPreparing the player...`);
+
+  const bundle = await fetchPlaybackBundle(movie, {
+    season: selectedSeason,
+    episode: selectedEpisode
+  });
+
   if (requestId !== movieModalRequestId || activeMovie?.id !== movie.id) return;
+
+  if (!bundle?.url) {
+    setMovieModalState(
+      `${movie.description}\n\nThis title is not ready for direct playback right now. Try downloading it instead.`,
+      'error'
+    );
+    return;
+  }
+
+  renderPlaybackSettings(bundle);
+  await applyMovieSource(movie, bundle.url, {
+    autoplay: true,
+    resumeAt: savedState?.completed ? 0 : (savedState?.progress || 0)
+  });
 }
 
 function closeMovieModal() {
+  syncActiveWatchState({ force: true });
   movieModalRequestId += 1;
   movieModal.classList.add('hidden');
   resetPlayerSurface();
   moviePlayer.currentTime = 0;
+  lastSavedPlaybackMark = '';
   activeMovie = null;
 }
 
@@ -1313,6 +1521,9 @@ movieModalCloseBtn?.addEventListener('click', closeMovieModal);
 moviePlayButton?.addEventListener('click', playMovie);
 movieDownloadButton?.addEventListener('click', () => downloadMovie());
 moviePlayer?.addEventListener('click', playMovie);
+moviePlayer?.addEventListener('timeupdate', () => syncActiveWatchState());
+moviePlayer?.addEventListener('pause', () => syncActiveWatchState({ force: true }));
+moviePlayer?.addEventListener('ended', () => syncActiveWatchState({ completed: true, force: true }));
 featuredPlayButton?.addEventListener('click', playFeaturedMovie);
 featuredTrailerButton?.addEventListener('click', openFeaturedTrailer);
 featuredDownloadButton?.addEventListener('click', downloadFeaturedMovie);

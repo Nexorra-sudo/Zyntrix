@@ -1118,16 +1118,16 @@ body::before {
 .featured-hero-content,
 .featured-hero-poster img,
 .featured-hero-backdrop {
-  transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
+  transition: opacity 180ms ease, transform 180ms ease, filter 180ms ease;
 }
 
 .featured-hero.hero-switching .featured-hero-content,
 .featured-hero.hero-switching .featured-hero-poster img {
-  animation: featuredHeroSwap 220ms ease;
+  animation: featuredHeroSwap 180ms ease;
 }
 
 .featured-hero.hero-switching .featured-hero-backdrop {
-  animation: featuredBackdropSwap 220ms ease;
+  animation: featuredBackdropSwap 180ms ease;
 }
 
 .featured-hero-backdrop {
@@ -1247,6 +1247,23 @@ body::before {
   box-shadow: var(--shadow-soft);
 }
 
+.boxed-row {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05)),
+    radial-gradient(circle at top right, rgba(255, 166, 77, 0.14), transparent 38%);
+  border-color: rgba(255,255,255,0.14);
+  box-shadow: 0 22px 54px rgba(5, 4, 18, 0.28);
+}
+
+.personalized-row {
+  border-color: rgba(255, 214, 140, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05)),
+    radial-gradient(circle at top left, rgba(255, 179, 71, 0.18), transparent 34%);
+}
+
 .row-header {
   display: flex;
   align-items: flex-start;
@@ -1282,6 +1299,9 @@ body::before {
 
 .rail-shell {
   position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 4px 0;
 }
 
 .rail-shell::after {
@@ -1305,6 +1325,7 @@ body::before {
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(149, 112, 255, 0.6) transparent;
+  will-change: scroll-position;
 }
 
 .row-list::-webkit-scrollbar {
@@ -1375,6 +1396,33 @@ body::before {
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.movie-card-progress {
+  margin-top: 6px;
+}
+
+.movie-card-progress span {
+  display: block;
+  margin-bottom: 8px;
+  color: #efe7ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.movie-card-progress-track {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+}
+
+.movie-card-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffb347, #ff6b6b);
+  box-shadow: 0 0 16px rgba(255, 138, 76, 0.34);
 }
 
 .movie-card-overlay {
@@ -1481,17 +1529,31 @@ body::before {
     gap: 18px;
     min-height: 0;
     align-items: center;
+    padding: 18px;
   }
   .featured-hero-backdrop {
-    transform: scale(1.04);
-    filter: saturate(1.08) brightness(0.88);
+    transform: scale(1.02);
+    filter: saturate(1.08) brightness(0.82);
   }
-  .featured-hero-content { padding-top: 0; }
-  .featured-hero-poster { position: relative; width: 100%; justify-content: flex-start; }
+  .featured-hero-content {
+    padding-top: 0;
+    background: linear-gradient(180deg, rgba(10, 8, 22, 0.1), rgba(10, 8, 22, 0.34));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 22px;
+    padding: 18px;
+    backdrop-filter: blur(10px);
+  }
+  .featured-hero-poster {
+    position: relative;
+    width: 100%;
+    justify-content: flex-start;
+    margin-top: -6px;
+  }
   .featured-hero-poster img {
-    width: min(52vw, 240px);
-    max-width: 240px;
-    border-radius: 18px;
+    width: min(58vw, 250px);
+    max-width: 250px;
+    border-radius: 20px;
+    box-shadow: 0 24px 46px rgba(4, 3, 17, 0.42);
   }
   .featured-hero h2 {
     max-width: none;
@@ -1526,6 +1588,10 @@ body::before {
     padding: 6px 4px 12px;
     scroll-snap-type: x mandatory;
     overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .row-list::-webkit-scrollbar {
+    display: none;
   }
   .movie-card,
   .movie-card.compact { flex-basis: min(72vw, 222px); }
