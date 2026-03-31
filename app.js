@@ -133,12 +133,20 @@ let movies = [
 const movieCategories = [
   { title: 'Trending Now', filter: movie => movie.category === 'Trending' },
   { title: 'Action Movies', filter: movie => movie.genre.toLowerCase().includes('action') },
+  { title: 'Horror Collection', filter: movie => movie.genre.toLowerCase().includes('horror') },
   { title: 'Drama Picks', filter: movie => movie.genre.toLowerCase().includes('drama') },
-  { title: 'Horror Hits', filter: movie => movie.genre.toLowerCase().includes('horror') },
-  { title: 'Animated Adventures', filter: movie => movie.genre.toLowerCase().includes('animation') }
+  { title: 'Comedy Tonight', filter: movie => movie.genre.toLowerCase().includes('comedy') },
+  { title: 'Animated Adventures', filter: movie => movie.genre.toLowerCase().includes('animation') },
+  { title: 'Romance Stories', filter: movie => movie.genre.toLowerCase().includes('romance') },
+  { title: 'Adventure Run', filter: movie => movie.genre.toLowerCase().includes('adventure') }
 ];
 
 let deferredPrompt = null;
+let railObserver = null;
+let featuredMovie = null;
+let featuredHeroTimer = null;
+let featuredHeroItems = [];
+let featuredHeroIndex = 0;
 
 // Cineverse API Configuration
 const cineverseApiHeaders = {
@@ -159,6 +167,11 @@ const CINEVERSE_API_BASE = 'https://moviebox.davidcyril.name.ng/api';
 function getImageUrl(item) {
   const query = (item.query || item.title || 'photo').trim().replace(/\s+/g, ',');
   return item.imageUrl || `https://loremflickr.com/600/900/${encodeURIComponent(query)}?lock=${item.id}`;
+}
+
+function buildTrailerUrl(movie) {
+  if (!movie) return 'https://www.youtube.com/';
+  return movie.trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(`${movie.title} ${movie.year || ''} official trailer`)}`;
 }
 
 function showIntro() {
@@ -217,13 +230,32 @@ const emptyCinemaState = document.getElementById('emptyCinemaState');
 const brandTitle = document.querySelector('.brand h1');
 const brandSubtitle = document.querySelector('.brand p');
 const searchLabel = document.querySelector('.search-label');
+const featuredHero = document.getElementById('featuredHero');
+const featuredHeroBackdrop = document.getElementById('featuredHeroBackdrop');
+const featuredHeroPoster = document.getElementById('featuredHeroPoster');
+const featuredHeroTitle = document.getElementById('featuredHeroTitle');
+const featuredHeroGenres = document.getElementById('featuredHeroGenres');
+const featuredHeroDescription = document.getElementById('featuredHeroDescription');
+const featuredPlayButton = document.getElementById('featuredPlayButton');
+const featuredTrailerButton = document.getElementById('featuredTrailerButton');
+const featuredDownloadButton = document.getElementById('featuredDownloadButton');
 const movieModal = document.getElementById('movieModal');
+const movieDetailBackdrop = document.getElementById('movieDetailBackdrop');
+const movieDetailPoster = document.getElementById('movieDetailPoster');
+const movieDetailPreview = document.querySelector('.movie-detail-preview');
 const moviePlayer = document.getElementById('moviePlayer');
+const movieSubtitleToggle = document.getElementById('movieSubtitleToggle');
+const movieSettingsButton = document.getElementById('movieSettingsButton');
+const movieSettingsPanel = document.getElementById('movieSettingsPanel');
+const movieQualitySelect = document.getElementById('movieQualitySelect');
+const movieSubtitleLanguage = document.getElementById('movieSubtitleLanguage');
+const episodePanel = document.getElementById('episodePanel');
+const seasonSelect = document.getElementById('seasonSelect');
+const episodeList = document.getElementById('episodeList');
 const movieModalTitle = document.getElementById('movieModalTitle');
 const movieModalGenre = document.getElementById('movieModalGenre');
 const movieModalDesc = document.getElementById('movieModalDesc');
 const movieDownloadButton = document.getElementById('movieDownloadButton');
-const movieOpenButton = document.getElementById('movieOpenButton');
 const movieModalClose = document.getElementById('movieModalClose');
 const movieModalCloseBtn = document.getElementById('movieModalCloseBtn');
 const moviePlayButton = document.getElementById('moviePlayButton');
@@ -232,6 +264,10 @@ let activeItem = null;
 let activeMovie = null;
 let currentMode = 'images';
 let movieModalRequestId = 0;
+let currentPlaybackBundle = null;
+let selectedSeason = 1;
+let selectedEpisode = 1;
+let subtitlesEnabled = false;
 const movieApiBasePath = '/api';
 
 function extractMovieSource(data) {
@@ -285,6 +321,95 @@ function extractMovieSource(data) {
   return null;
 }
 
+function getDefaultSeasonCount(movie) {
+  if (!movie || movie.subjectType !== 2) return 1;
+  return Number(movie.seasonCount || movie.totalSeasons || 4);
+}
+
+function getDefaultEpisodeCount(movie) {
+  if (!movie || movie.subjectType !== 2) return 1;
+  return Number(movie.episodeCount || movie.totalEpisodes || 12);
+}
+
+function createEpisodeTitle(episodeNumber) {
+  return `Episode ${episodeNumber}`;
+}
+
+function getSourceCacheKey(season, episode) {
+  return `s${season}e${episode}`;
+}
+
+function normalizeSourceBundle(data) {
+  const bundle = {
+    url: null,
+    qualities: [],
+    subtitles: []
+  };
+
+  const sources = [];
+  if (Array.isArray(data?.processedSources)) {
+    data.processedSources.forEach((source, index) => {
+      if (!source) return;
+      sources.push({
+        label: source.quality || source.label || source.resolution || `Source ${index + 1}`,
+        url: source.downloadUrl || source.directUrl || source.url || ''
+      });
+    });
+  }
+
+  if (Array.isArray(data?.downloads)) {
+    data.downloads.forEach((source, index) => {
+      if (!source) return;
+      sources.push({
+        label: source.quality || source.label || source.resolution || `Download ${index + 1}`,
+        url: source.url || source.downloadUrl || ''
+      });
+    });
+  }
+
+  if (!sources.length) {
+    const directUrl = extractMovieSource(data);
+    if (directUrl) {
+      sources.push({ label: 'Auto', url: directUrl });
+    }
+  }
+
+  bundle.qualities = sources.filter(source => source.url);
+  bundle.url = bundle.qualities[0]?.url || null;
+
+  const subtitles = [];
+  if (typeof data?.subtitle_url === 'string' && data.subtitle_url) {
+    subtitles.push({ label: 'Default', language: 'Default', url: data.subtitle_url });
+  }
+
+  if (Array.isArray(data?.subtitles)) {
+    data.subtitles.forEach((item, index) => {
+      const url = item?.url || item?.src || item?.file || '';
+      if (!url) return;
+      subtitles.push({
+        label: item.label || item.language || `Subtitle ${index + 1}`,
+        language: item.language || item.label || `Subtitle ${index + 1}`,
+        url
+      });
+    });
+  }
+
+  if (Array.isArray(data?.captions)) {
+    data.captions.forEach((item, index) => {
+      const url = item?.url || item?.src || '';
+      if (!url) return;
+      subtitles.push({
+        label: item.label || item.language || `Caption ${index + 1}`,
+        language: item.language || item.label || `Caption ${index + 1}`,
+        url
+      });
+    });
+  }
+
+  bundle.subtitles = subtitles;
+  return bundle;
+}
+
 function setMovieModalState(message, state = 'loading') {
   movieModalDesc.textContent = message;
   moviePlayButton.disabled = true;
@@ -320,6 +445,158 @@ async function applyMovieSource(movie, source, { autoplay = false } = {}) {
       movieModalDesc.textContent = `${movie.description}\n\nTap Play or tap the video area to start the movie.`;
     }
   }
+}
+
+function clearSubtitleTracks() {
+  Array.from(moviePlayer.querySelectorAll('track')).forEach(track => track.remove());
+}
+
+function resetPlayerSurface() {
+  movieDetailPreview?.classList.add('hidden');
+  movieSettingsPanel?.classList.add('hidden');
+  clearSubtitleTracks();
+  currentPlaybackBundle = null;
+  moviePlayer.pause();
+  moviePlayer.removeAttribute('src');
+  moviePlayer.load();
+  movieQualitySelect.innerHTML = '';
+  movieSubtitleLanguage.innerHTML = '';
+  movieSubtitleToggle.textContent = 'Subtitles Off';
+  movieSubtitleToggle.disabled = true;
+  movieQualitySelect.disabled = true;
+  movieSubtitleLanguage.disabled = true;
+}
+
+function revealPlayerSurface() {
+  movieDetailPreview?.classList.remove('hidden');
+}
+
+function applySubtitleSelection() {
+  clearSubtitleTracks();
+  if (!currentPlaybackBundle || !subtitlesEnabled || !movieSubtitleLanguage.value) {
+    movieSubtitleToggle.textContent = 'Subtitles Off';
+    return;
+  }
+
+  const selected = currentPlaybackBundle.subtitles.find(item => item.language === movieSubtitleLanguage.value) || currentPlaybackBundle.subtitles[0];
+  if (!selected?.url) {
+    movieSubtitleToggle.textContent = 'Subtitles Off';
+    return;
+  }
+
+  const track = document.createElement('track');
+  track.kind = 'subtitles';
+  track.label = selected.label || selected.language || 'Subtitle';
+  track.srclang = (selected.language || 'en').slice(0, 2).toLowerCase();
+  track.src = selected.url;
+  track.default = true;
+  moviePlayer.appendChild(track);
+  track.addEventListener('load', () => {
+    Array.from(moviePlayer.textTracks || []).forEach(textTrack => {
+      textTrack.mode = textTrack.language === track.srclang || textTrack.label === track.label ? 'showing' : 'disabled';
+    });
+  });
+  Array.from(moviePlayer.textTracks || []).forEach(textTrack => {
+    textTrack.mode = 'disabled';
+  });
+  movieSubtitleToggle.textContent = `Subtitles On`;
+}
+
+function renderPlaybackSettings(bundle) {
+  currentPlaybackBundle = bundle;
+
+  movieQualitySelect.innerHTML = '';
+  bundle?.qualities?.forEach((quality, index) => {
+    const option = document.createElement('option');
+    option.value = quality.url;
+    option.textContent = quality.label || `Quality ${index + 1}`;
+    movieQualitySelect.appendChild(option);
+  });
+
+  movieSubtitleLanguage.innerHTML = '';
+  const offOption = document.createElement('option');
+  offOption.value = '';
+  offOption.textContent = 'Off';
+  movieSubtitleLanguage.appendChild(offOption);
+
+  bundle?.subtitles?.forEach((subtitle, index) => {
+    const option = document.createElement('option');
+    option.value = subtitle.language || `subtitle-${index + 1}`;
+    option.textContent = subtitle.label || subtitle.language || `Subtitle ${index + 1}`;
+    movieSubtitleLanguage.appendChild(option);
+  });
+
+  movieSubtitleLanguage.value = '';
+  subtitlesEnabled = false;
+
+  if (bundle?.subtitles?.length) {
+    movieSubtitleLanguage.disabled = false;
+    movieSubtitleToggle.disabled = false;
+  } else {
+    movieSubtitleLanguage.disabled = true;
+    subtitlesEnabled = false;
+    movieSubtitleToggle.disabled = true;
+  }
+
+  if (bundle?.qualities?.length) {
+    movieQualitySelect.disabled = false;
+    movieQualitySelect.value = bundle.qualities[0].url;
+  } else {
+    movieQualitySelect.disabled = true;
+  }
+
+  applySubtitleSelection();
+}
+
+function renderEpisodeSelector(movie) {
+  if (!episodePanel || !seasonSelect || !episodeList) return;
+
+  if (movie.subjectType !== 2) {
+    episodePanel.classList.add('hidden');
+    return;
+  }
+
+  episodePanel.classList.remove('hidden');
+  const seasonCount = getDefaultSeasonCount(movie);
+  const episodeCount = getDefaultEpisodeCount(movie);
+
+  seasonSelect.innerHTML = '';
+  for (let season = 1; season <= seasonCount; season += 1) {
+    const option = document.createElement('option');
+    option.value = String(season);
+    option.textContent = `Season ${season}`;
+    seasonSelect.appendChild(option);
+  }
+  seasonSelect.value = String(selectedSeason);
+
+  episodeList.innerHTML = '';
+  for (let episode = 1; episode <= episodeCount; episode += 1) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `episode-btn${episode === selectedEpisode ? ' active' : ''}`;
+    button.dataset.episode = String(episode);
+    button.innerHTML = `<strong>E${episode}</strong><span>${createEpisodeTitle(episode)}</span>`;
+    button.addEventListener('click', async () => {
+      selectedEpisode = episode;
+      renderEpisodeSelector(movie);
+      resetPlayerSurface();
+    });
+    episodeList.appendChild(button);
+  }
+}
+
+async function loadSelectedPlayback(movie, { autoplay = false } = {}) {
+  const bundle = await fetchPlaybackBundle(movie, { season: selectedSeason, episode: selectedEpisode });
+  if (!bundle?.url) {
+    setMovieModalState(
+      `${movie.description}\n\nThis episode is not available right now. Try another episode or download instead.`,
+      'error'
+    );
+    return;
+  }
+
+  renderPlaybackSettings(bundle);
+  await applyMovieSource(movie, bundle.url, { autoplay });
 }
 
 function renderGallery(items) {
@@ -402,7 +679,9 @@ async function fetchMovieData(query = 'popular') {
       category: item.subjectType === 2 ? 'Series' : 'Movie',
       hasResource: true,
       subjectId: item.subjectId,
-      subjectType: item.subjectType
+      subjectType: item.subjectType,
+      seasonCount: item.seasonCount || item.totalSeasons || item.seasons?.length || (item.subjectType === 2 ? 4 : 1),
+      episodeCount: item.episodeCount || item.totalEpisodes || 12
     }));
   } catch (err) {
     console.warn('Cineverse API error', err);
@@ -410,44 +689,51 @@ async function fetchMovieData(query = 'popular') {
   }
 }
 
-async function getMovieSource(movie) {
+async function fetchPlaybackBundle(movie, { season = 1, episode = 1 } = {}) {
   if (!movie || !movie.id) return null;
-  if (movie.videoSrc && !movie.videoSrc.includes('loremflickr.com')) return movie.videoSrc;
-  if (movie.sourceChecked && !movie.videoSrc) return null;
+
+  const cacheKey = getSourceCacheKey(season, episode);
+  movie.sourceCache = movie.sourceCache || {};
+  if (movie.sourceCache[cacheKey]) {
+    return movie.sourceCache[cacheKey];
+  }
 
   try {
     const subjectId = movie.subjectId || movie.id;
     const isTv = movie.subjectType === 2;
-    
     let sourceUrl = `${CINEVERSE_API_BASE}/sources/${subjectId}`;
-    if (isTv) sourceUrl += '?season=1&episode=1';
-    
+
+    if (isTv) {
+      sourceUrl += `?season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`;
+    }
+
     const res = await fetch(sourceUrl, { headers: cineverseApiHeaders });
     if (!res.ok) throw new Error(`Source API returned ${res.status}`);
     const data = await res.json();
     const srcData = data.data || data;
-    
-    // Find stream URL
-    let targetUrl = null;
-    if (srcData.processedSources?.[0]) {
-      targetUrl = srcData.processedSources[0].downloadUrl || srcData.processedSources[0].directUrl;
-    } else if (srcData.downloads?.[0]) {
-      targetUrl = srcData.downloads[0].url;
-    } else if (srcData.url) {
-      targetUrl = srcData.url;
-    }
-    
-    if (targetUrl) {
-      movie.videoSrc = targetUrl;
+    const bundle = normalizeSourceBundle(srcData);
+
+    if (bundle.url) {
+      movie.sourceCache[cacheKey] = bundle;
       movie.hasResource = true;
-      return movie.videoSrc;
+      movie.videoSrc = bundle.url;
+      if (bundle.subtitles[0]?.url) {
+        movie.subtitleUrl = bundle.subtitles[0].url;
+      }
+      return bundle;
     }
   } catch (err) {
     console.warn('Cineverse source fetch error', err);
   }
+
   movie.sourceChecked = true;
   movie.hasResource = false;
-  return movie.videoSrc || null;
+  return null;
+}
+
+async function getMovieSource(movie, options = {}) {
+  const bundle = await fetchPlaybackBundle(movie, options);
+  return bundle?.url || null;
 }
 
 async function searchMovies(query) {
@@ -471,34 +757,169 @@ async function searchMovies(query) {
   );
 }
 
-function buildMovieRow(title, entries) {
+function getFeaturedMovie(items = movies) {
+  if (!items.length) return null;
+  return items.find(movie => movie.category === 'Trending') || items[0];
+}
+
+function renderFeaturedHero(movie) {
+  featuredMovie = movie || getFeaturedMovie();
+  if (!featuredHero || !featuredMovie) return;
+
+  featuredHero.classList.remove('hero-switching');
+  void featuredHero.offsetWidth;
+  featuredHero.classList.add('hero-switching');
+
+  featuredHeroTitle.textContent = featuredMovie.title;
+  featuredHeroDescription.textContent = featuredMovie.description;
+  featuredHeroPoster.src = featuredMovie.poster;
+  featuredHeroPoster.alt = `${featuredMovie.title} poster`;
+  featuredHeroBackdrop.style.backgroundImage = `linear-gradient(90deg, rgba(8, 7, 21, 0.92), rgba(8, 7, 21, 0.5)), url("${featuredMovie.poster}")`;
+
+  const chips = [`<span class="genre-chip">${featuredMovie.year || 'Now Showing'}</span>`]
+    .concat((featuredMovie.genre || '').split(',').map(item => item.trim()).filter(Boolean).map(item => `<span class="genre-chip">${item}</span>`));
+
+  featuredHeroGenres.innerHTML = chips.join('');
+}
+
+function stopFeaturedSlideshow() {
+  if (!featuredHeroTimer) return;
+  clearInterval(featuredHeroTimer);
+  featuredHeroTimer = null;
+}
+
+function startFeaturedSlideshow(items = movies) {
+  stopFeaturedSlideshow();
+
+  featuredHeroItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (featuredHeroItems.length <= 1) {
+    featuredHeroIndex = 0;
+    renderFeaturedHero(getFeaturedMovie(featuredHeroItems));
+    return;
+  }
+
+  const initialMovie = getFeaturedMovie(featuredHeroItems);
+  featuredHeroIndex = Math.max(0, featuredHeroItems.findIndex(movie => String(movie.id) === String(initialMovie?.id)));
+  renderFeaturedHero(featuredHeroItems[featuredHeroIndex]);
+
+  featuredHeroTimer = setInterval(() => {
+    featuredHeroIndex = (featuredHeroIndex + 1) % featuredHeroItems.length;
+    renderFeaturedHero(featuredHeroItems[featuredHeroIndex]);
+  }, 5000);
+}
+
+function stopRailAutoScroll(rail) {
+  if (!rail?.dataset.timerId) return;
+  clearInterval(Number(rail.dataset.timerId));
+  delete rail.dataset.timerId;
+}
+
+function startRailAutoScroll(rail) {
+  if (!rail || rail.dataset.timerId || rail.dataset.paused === 'true') return;
+  if (rail.scrollWidth - rail.clientWidth <= 24) return;
+
+  rail.dataset.direction = rail.dataset.direction || '1';
+  const timerId = setInterval(() => {
+    if (rail.dataset.visible !== 'true' || rail.dataset.paused === 'true') return;
+
+    const maxScroll = rail.scrollWidth - rail.clientWidth;
+    let direction = Number(rail.dataset.direction || '1');
+    rail.scrollLeft += direction;
+
+    if (rail.scrollLeft >= maxScroll - 4) direction = -1;
+    if (rail.scrollLeft <= 4) direction = 1;
+
+    rail.dataset.direction = String(direction);
+  }, 20);
+
+  rail.dataset.timerId = String(timerId);
+}
+
+function setupRailAutoScroll(rail) {
+  if (!rail) return;
+
+  const pause = () => {
+    rail.dataset.paused = 'true';
+    stopRailAutoScroll(rail);
+  };
+  const resume = () => {
+    rail.dataset.paused = 'false';
+    if (rail.dataset.visible === 'true') startRailAutoScroll(rail);
+  };
+
+  rail.addEventListener('mouseenter', pause);
+  rail.addEventListener('mouseleave', resume);
+  rail.addEventListener('touchstart', pause, { passive: true });
+  rail.addEventListener('touchend', resume, { passive: true });
+
+  if (!railObserver) {
+    railObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        entry.target.dataset.visible = entry.isIntersecting ? 'true' : 'false';
+        if (entry.isIntersecting) startRailAutoScroll(entry.target);
+        else stopRailAutoScroll(entry.target);
+      });
+    }, { threshold: 0.35 });
+  }
+
+  railObserver.observe(rail);
+}
+
+function buildMovieCard(movie, compact = false) {
+  return `
+    <article class="movie-card${compact ? ' compact' : ''}" data-movie-id="${movie.id}">
+      <div class="movie-card-poster">
+        <img src="${movie.poster}" alt="${movie.title}" loading="lazy" />
+        <div class="movie-card-overlay">
+          <span>Play</span>
+        </div>
+      </div>
+      <div class="movie-card-info">
+        <h4>${movie.title}</h4>
+        <p>${movie.genre}</p>
+        <small>${movie.year || 'Now Showing'}</small>
+      </div>
+    </article>
+  `;
+}
+
+function buildMovieRow(title, entries, description = 'Curated movies for your next watch.', bindClicks = true) {
   const row = document.createElement('section');
   row.className = 'movie-row';
   row.innerHTML = `
     <div class="row-header">
-      <h3>${title}</h3>
+      <div>
+        <p class="row-kicker">Movie Section</p>
+        <h3>${title}</h3>
+        <p class="row-description">${description}</p>
+      </div>
+      <span class="row-count">${entries.length} titles</span>
     </div>
-    <div class="row-list">
-      ${entries.map(movie => `
-        <article class="movie-card" data-movie-id="${movie.id}">
-          <img src="${movie.poster}" alt="${movie.title}" loading="lazy" />
-          <div class="movie-card-overlay">
-            <span>Play</span>
-          </div>
-          <div class="movie-card-info">
-            <h4>${movie.title}</h4>
-            <p>${movie.genre}</p>
-          </div>
-        </article>
-      `).join('')}
+    <div class="rail-shell">
+      <div class="row-list" tabindex="0" aria-label="${title}">
+        ${entries.map(movie => buildMovieCard(movie)).join('')}
+      </div>
     </div>
   `;
 
-  row.querySelectorAll('.movie-card').forEach(card => {
-    card.addEventListener('click', () => openMovieModal(card.dataset.movieId));
-  });
+  if (bindClicks) {
+    row.querySelectorAll('.movie-card').forEach(card => {
+      card.addEventListener('click', () => openMovieModal(card.dataset.movieId));
+    });
+  }
 
+  setupRailAutoScroll(row.querySelector('.row-list'));
   return row;
+}
+
+function dedupeMovies(items) {
+  const seenIds = new Set();
+  return items.filter(movie => {
+    const key = String(movie.id);
+    if (seenIds.has(key)) return false;
+    seenIds.add(key);
+    return true;
+  });
 }
 
 async function renderCinemaHome() {
@@ -509,17 +930,18 @@ async function renderCinemaHome() {
   cinemaRows.classList.remove('hidden');
 
   const sections = [
-    { title: 'Trending', query: 'trending' },
-    { title: 'For You', query: 'popular' },
-    { title: 'Top 10', query: 'top 10' },
-    { title: 'Action', query: 'action' },
-    { title: 'Drama', query: 'drama' },
-    { title: 'Nollywood', query: 'nollywood' },
-    { title: 'Bollywood', query: 'bollywood' },
-    { title: 'K-Drama', query: 'kdrama' },
-    { title: 'Anime', query: 'anime' },
-    { title: 'Comedy', query: 'comedy' },
-    { title: 'Hollywood', query: 'hollywood' }
+    { title: 'Trending Now', query: 'trending', description: 'What viewers are watching right now.' },
+    { title: 'Action Blast', query: 'action', description: 'Explosive missions and high-stakes momentum.' },
+    { title: 'Horror Nights', query: 'horror', description: 'Dark suspense, fear, and midnight thrills.' },
+    { title: 'Drama Stories', query: 'drama', description: 'Emotional stories with stronger character depth.' },
+    { title: 'Comedy Room', query: 'comedy', description: 'Easy laughs and feel-good movie time.' },
+    { title: 'Animation World', query: 'animation', description: 'Imaginative adventures for every mood.' },
+    { title: 'Nollywood Picks', query: 'nollywood', description: 'Popular African titles in one clean row.' },
+    { title: 'Bollywood Hits', query: 'bollywood', description: 'Stylish spectacle, music, and drama.' },
+    { title: 'K-Drama Spotlight', query: 'kdrama', description: 'Compelling Korean stories and favorites.' },
+    { title: 'Anime Favorites', query: 'anime', description: 'Action, fantasy, and fan-loved animation.' },
+    { title: 'Romance Lounge', query: 'romance', description: 'Chemistry, longing, and heartfelt moments.' },
+    { title: 'Adventure Run', query: 'adventure', description: 'Quest-driven titles built for binge sessions.' }
   ];
 
   const results = await Promise.all(
@@ -532,7 +954,7 @@ async function renderCinemaHome() {
   const liveSections = results
     .map(section => ({
       ...section,
-      items: section.items.filter(movie => movie.hasResource !== false)
+      items: dedupeMovies(section.items.filter(movie => movie.hasResource !== false)).slice(0, 14)
     }))
     .filter(section => section.items.length);
 
@@ -541,23 +963,17 @@ async function renderCinemaHome() {
     movieCategories.forEach(category => {
       const entries = movies.filter(category.filter);
       if (!entries.length) return;
-      cinemaRows.appendChild(buildMovieRow(category.title, entries));
+      cinemaRows.appendChild(buildMovieRow(category.title, entries.slice(0, 12), 'Offline picks curated for this genre.'));
     });
+    startFeaturedSlideshow(movies);
     return;
   }
 
-  const seenIds = new Set();
-  movies = liveSections.flatMap(section =>
-    section.items.filter(movie => {
-      const key = String(movie.id);
-      if (seenIds.has(key)) return false;
-      seenIds.add(key);
-      return true;
-    })
-  );
+  movies = dedupeMovies(liveSections.flatMap(section => section.items));
+  startFeaturedSlideshow(movies);
 
   liveSections.forEach(section => {
-    cinemaRows.appendChild(buildMovieRow(section.title, section.items.slice(0, 12)));
+    cinemaRows.appendChild(buildMovieRow(section.title, section.items, section.description));
   });
 }
 
@@ -574,24 +990,9 @@ function renderMovieResults(items) {
     return;
   }
 
-  playable.forEach(movie => {
-    const card = document.createElement('article');
-    card.className = 'movie-card search-result';
-    card.dataset.movieId = movie.id;
-    card.innerHTML = `
-      <img src="${movie.poster}" alt="${movie.title}" loading="lazy" />
-      <div class="movie-card-overlay">
-        <span>Play</span>
-      </div>
-      <div class="movie-card-info">
-        <h4>${movie.title}</h4>
-        <p>${movie.genre}</p>
-      </div>
-    `;
-
-    card.addEventListener('click', () => openMovieModal(movie.id));
-    movieResults.appendChild(card);
-  });
+  const section = buildMovieRow(`Found ${playable.length} movies`, playable, 'Search results displayed in a clean horizontal rail.');
+  movieResults.appendChild(section);
+  startFeaturedSlideshow(playable);
 }
 
 async function openMovieModal(movieId) {
@@ -604,10 +1005,19 @@ async function openMovieModal(movieId) {
   moviePlayer.removeAttribute('src');
   moviePlayer.load();
   moviePlayer.poster = movie.poster;
+  if (movieDetailPoster) {
+    movieDetailPoster.src = movie.poster;
+    movieDetailPoster.alt = `${movie.title} poster`;
+  }
+  if (movieDetailBackdrop) {
+    movieDetailBackdrop.style.backgroundImage = `url("${movie.poster}")`;
+  }
   movieModalTitle.textContent = movie.title;
+  movieModalGenre.textContent = `${movie.genre} - ${movie.year}`;
+  movieModalGenre.textContent = `${movie.genre} • ${movie.year}`;
+  movieModalGenre.textContent = `${movie.genre} • ${movie.year}`;
   movieModalGenre.textContent = `${movie.genre} • ${movie.year}`;
   movieModalDesc.textContent = movie.description;
-  movieOpenButton.href = movie.detailUrl;
   movieModal.classList.remove('hidden');
   moviePlayButton.disabled = true;
   movieDownloadButton.disabled = true;
@@ -626,7 +1036,7 @@ async function openMovieModal(movieId) {
     await applyMovieSource(movie, source, { autoplay: true });
   } else {
     setMovieModalState(
-      `${movie.description}\n\nThis title is not ready for direct playback right now. Use the detail link to continue.`,
+      `${movie.description}\n\nThis title is not ready for direct playback right now. Try downloading it instead.`,
       'error'
     );
   }
@@ -652,18 +1062,14 @@ function playMovie() {
     startMoviePlayback().then(played => {
       if (played) return;
       setMovieModalState(
-        `${activeMovie?.description || 'Unable to start playback.'}\n\nThe video could not start in this player. Use the detail link to keep watching.`,
+        `${activeMovie?.description || 'Unable to start playback.'}\n\nThe video could not start in this player. Try downloading it instead.`,
         'error'
       );
     });
   }
 }
 
-async function downloadMovie() {
-  if (!activeMovie || !activeMovie.videoSrc) return;
-  const url = activeMovie.videoSrc;
-  const filename = `${activeMovie.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.mp4`;
-
+async function downloadFromUrl(url, filename) {
   try {
     const res = await fetch(url);
     const blob = await res.blob();
@@ -676,8 +1082,21 @@ async function downloadMovie() {
     a.remove();
     URL.revokeObjectURL(objectUrl);
   } catch (err) {
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener');
   }
+}
+
+async function downloadMovie(targetMovie = activeMovie) {
+  if (!targetMovie) return;
+
+  const source = targetMovie.videoSrc || await getMovieSource(targetMovie);
+  if (!source) {
+    window.open(targetMovie.detailUrl || buildTrailerUrl(targetMovie), '_blank', 'noopener');
+    return;
+  }
+
+  const filename = `${targetMovie.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.mp4`;
+  await downloadFromUrl(source, filename);
 }
 
 function showSelection() {
@@ -751,26 +1170,113 @@ async function downloadImage() {
   if (!activeItem) return;
   const url = getImageUrl(activeItem);
   const filename = `${activeItem.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.jpg`;
-
-  try {
-    const res = await fetch(url, { mode: 'cors' });
-    const blob = await res.blob();
-    const a = document.createElement('a');
-    const objectUrl = URL.createObjectURL(blob);
-    a.href = objectUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
-  } catch (err) {
-    window.open(url, '_blank');
-  }
+  await downloadFromUrl(url, filename);
 }
 
 function closePreview() {
   previewModal.classList.add('hidden');
   activeItem = null;
+}
+
+function playFeaturedMovie() {
+  if (!featuredMovie) return;
+  openMovieModal(featuredMovie.id);
+}
+
+function openFeaturedTrailer() {
+  if (!featuredMovie) return;
+  window.open(buildTrailerUrl(featuredMovie), '_blank', 'noopener');
+}
+
+async function downloadFeaturedMovie() {
+  if (!featuredMovie) return;
+  await downloadMovie(featuredMovie);
+}
+
+async function openMovieModal(movieId) {
+  const movie = movies.find(item => String(item.id) === String(movieId));
+  if (!movie) return;
+
+  const requestId = ++movieModalRequestId;
+  activeMovie = movie;
+  selectedSeason = 1;
+  selectedEpisode = 1;
+  subtitlesEnabled = false;
+  resetPlayerSurface();
+  moviePlayer.poster = movie.poster;
+
+  if (movieDetailPoster) {
+    movieDetailPoster.src = movie.poster;
+    movieDetailPoster.alt = `${movie.title} poster`;
+  }
+
+  if (movieDetailBackdrop) {
+    movieDetailBackdrop.style.backgroundImage = `url("${movie.poster}")`;
+  }
+
+  movieModalTitle.textContent = movie.title;
+  movieModalGenre.textContent = `${movie.genre} - ${movie.year}`;
+  movieModalDesc.textContent = movie.description;
+  renderEpisodeSelector(movie);
+  movieModal.classList.remove('hidden');
+  moviePlayButton.disabled = false;
+  movieDownloadButton.disabled = false;
+  movieModal.dataset.state = 'idle';
+  if (requestId !== movieModalRequestId || activeMovie?.id !== movie.id) return;
+}
+
+function closeMovieModal() {
+  movieModalRequestId += 1;
+  movieModal.classList.add('hidden');
+  resetPlayerSurface();
+  moviePlayer.currentTime = 0;
+  activeMovie = null;
+}
+
+function playMovie() {
+  if (!activeMovie) return;
+
+  const start = async () => {
+    if (!moviePlayer.src) {
+      revealPlayerSurface();
+      setMovieModalState(`${activeMovie.description}\n\nPreparing the player...`);
+      await loadSelectedPlayback(activeMovie, { autoplay: true });
+      return;
+    }
+
+    const played = await startMoviePlayback();
+    if (played && moviePlayer.requestFullscreen) {
+      moviePlayer.requestFullscreen().catch(() => {});
+    }
+
+    if (played) return;
+    setMovieModalState(
+      `${activeMovie?.description || 'Unable to start playback.'}\n\nThe video could not start in this player. Try downloading it instead.`,
+      'error'
+    );
+  };
+
+  start();
+}
+
+async function downloadMovie(targetMovie = activeMovie) {
+  if (!targetMovie) return;
+
+  const source = targetMovie.videoSrc || await getMovieSource(targetMovie, {
+    season: selectedSeason,
+    episode: selectedEpisode
+  });
+
+  if (!source) {
+    window.open(targetMovie.detailUrl || buildTrailerUrl(targetMovie), '_blank', 'noopener');
+    return;
+  }
+
+  const filenameBase = targetMovie.subjectType === 2
+    ? `${targetMovie.title}-season-${selectedSeason}-episode-${selectedEpisode}`
+    : targetMovie.title;
+  const filename = `${filenameBase.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.mp4`;
+  await downloadFromUrl(source, filename);
 }
 
 modalClose.addEventListener('click', closePreview);
@@ -780,8 +1286,40 @@ downloadButton.addEventListener('click', downloadImage);
 movieModalClose?.addEventListener('click', closeMovieModal);
 movieModalCloseBtn?.addEventListener('click', closeMovieModal);
 moviePlayButton?.addEventListener('click', playMovie);
-movieDownloadButton?.addEventListener('click', downloadMovie);
+movieDownloadButton?.addEventListener('click', () => downloadMovie());
 moviePlayer?.addEventListener('click', playMovie);
+featuredPlayButton?.addEventListener('click', playFeaturedMovie);
+featuredTrailerButton?.addEventListener('click', openFeaturedTrailer);
+featuredDownloadButton?.addEventListener('click', downloadFeaturedMovie);
+movieSettingsButton?.addEventListener('click', () => {
+  movieSettingsPanel.classList.toggle('hidden');
+});
+movieSubtitleToggle?.addEventListener('click', () => {
+  if (movieSubtitleLanguage.disabled) return;
+  subtitlesEnabled = !subtitlesEnabled;
+  if (subtitlesEnabled && !movieSubtitleLanguage.value) {
+    const firstSubtitle = currentPlaybackBundle?.subtitles?.[0];
+    movieSubtitleLanguage.value = firstSubtitle?.language || '';
+  }
+  applySubtitleSelection();
+});
+movieSubtitleLanguage?.addEventListener('change', () => {
+  subtitlesEnabled = movieSubtitleLanguage.value !== '';
+  applySubtitleSelection();
+});
+movieQualitySelect?.addEventListener('change', async () => {
+  const source = movieQualitySelect.value;
+  if (!activeMovie || !source) return;
+  await applyMovieSource(activeMovie, source, { autoplay: false });
+  applySubtitleSelection();
+});
+seasonSelect?.addEventListener('change', async () => {
+  if (!activeMovie) return;
+  selectedSeason = Number(seasonSelect.value || 1);
+  selectedEpisode = 1;
+  renderEpisodeSelector(activeMovie);
+  resetPlayerSurface();
+});
 
 selectPictures.addEventListener('click', () => enterMode('images'));
 selectCinema.addEventListener('click', () => enterMode('cinema'));
@@ -794,6 +1332,7 @@ searchInput.addEventListener('keydown', (event) => {
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !previewModal.classList.contains('hidden')) closePreview();
+  if (event.key === 'Escape' && !movieModal.classList.contains('hidden')) closeMovieModal();
 });
 
 if ('serviceWorker' in navigator) {
@@ -862,3 +1401,39 @@ async function loadHomeCinema() {
 
 // Load home cinema when page loads
 loadHomeCinema();
+
+async function enhanceHomeCinema() {
+  const homeCinemaRows = document.getElementById('homeCinemaRows');
+  if (!homeCinemaRows) return;
+
+  try {
+    const trendingMovies = await fetchMovieData('trending');
+    const displayMovies = trendingMovies.length ? trendingMovies.slice(0, 12) : movies.slice(0, 12);
+    if (!displayMovies.length) return;
+
+    const row = buildMovieRow('Fresh releases in motion', displayMovies, 'Horizontal cards with a cleaner, more professional layout.', false);
+    row.classList.add('home-showcase');
+
+    row.querySelectorAll('.movie-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const movieId = card.dataset.movieId;
+        const selected = displayMovies.find(movie => String(movie.id) === String(movieId));
+        if (!selected) return;
+
+        if (!movies.some(movie => String(movie.id) === String(selected.id))) {
+          movies = dedupeMovies([selected, ...movies]);
+        }
+
+        enterMode('cinema');
+        setTimeout(() => openMovieModal(selected.id), 220);
+      });
+    });
+
+    homeCinemaRows.innerHTML = '';
+    homeCinemaRows.appendChild(row);
+  } catch (err) {
+    console.error('Enhanced home cinema error:', err);
+  }
+}
+
+enhanceHomeCinema();
