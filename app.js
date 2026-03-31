@@ -429,12 +429,23 @@ async function startMoviePlayback() {
   }
 }
 
-async function applyMovieSource(movie, source, { autoplay = false } = {}) {
+async function applyMovieSource(movie, source, { autoplay = false, resumeAt = 0 } = {}) {
   if (!movie || !source) return;
 
   movie.videoSrc = source;
   moviePlayer.src = source;
   moviePlayer.load();
+
+  if (resumeAt > 0) {
+    moviePlayer.addEventListener('loadedmetadata', () => {
+      try {
+        moviePlayer.currentTime = Math.min(resumeAt, Math.max(0, (moviePlayer.duration || resumeAt) - 1));
+      } catch (err) {
+        console.warn('Resume seek error', err);
+      }
+    }, { once: true });
+  }
+
   moviePlayButton.disabled = false;
   movieDownloadButton.disabled = false;
   movieModal.dataset.state = 'ready';
@@ -1310,7 +1321,16 @@ movieSubtitleLanguage?.addEventListener('change', () => {
 movieQualitySelect?.addEventListener('change', async () => {
   const source = movieQualitySelect.value;
   if (!activeMovie || !source) return;
-  await applyMovieSource(activeMovie, source, { autoplay: false });
+
+  const resumeAt = Number.isFinite(moviePlayer.currentTime) ? moviePlayer.currentTime : 0;
+  const shouldContinuePlaying = !!moviePlayer.src && !moviePlayer.paused && !moviePlayer.ended;
+  revealPlayerSurface();
+
+  await applyMovieSource(activeMovie, source, {
+    autoplay: shouldContinuePlaying,
+    resumeAt
+  });
+
   applySubtitleSelection();
 });
 seasonSelect?.addEventListener('change', async () => {
