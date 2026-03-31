@@ -155,42 +155,51 @@
       <div class="modal-card movie-detail-card">
         <div class="movie-detail-backdrop" id="movieDetailBackdrop"></div>
         <button class="close-btn" id="movieModalCloseBtn" aria-label="Close movie">x</button>
-        <div class="movie-detail-preview">
-          <video id="moviePlayer" controls playsinline webkit-playsinline preload="metadata" class="movie-player"></video>
-          <div class="movie-player-toolbar">
-            <button id="movieSubtitleToggle" class="secondary-btn" type="button">Subtitles Off</button>
-            <button id="movieSettingsButton" class="secondary-btn icon-btn" type="button" aria-label="Player settings">Settings</button>
-          </div>
-          <div id="movieSettingsPanel" class="movie-settings-panel hidden">
-            <label class="settings-field">
-              <span>Quality</span>
-              <select id="movieQualitySelect"></select>
-            </label>
-            <label class="settings-field">
-              <span>Subtitle Language</span>
-              <select id="movieSubtitleLanguage"></select>
-            </label>
-          </div>
-        </div>
         <div class="movie-detail-body">
-          <div class="movie-detail-poster-card">
-            <img id="movieDetailPoster" alt="Movie poster">
-          </div>
-          <div class="modal-meta movie-detail-copy">
-            <h3 id="movieModalTitle"></h3>
-            <p id="movieModalGenre"></p>
-            <p id="movieModalDesc"></p>
-            <section id="episodePanel" class="episode-panel hidden">
-              <div class="episode-header">
-                <h4>Seasons and Episodes</h4>
-                <select id="seasonSelect" class="episode-select"></select>
-              </div>
-              <div id="episodeList" class="episode-list"></div>
-            </section>
-            <div class="modal-actions">
-              <button id="moviePlayButton" class="primary-btn">Play</button>
-              <button id="movieDownloadButton" class="secondary-btn">Download Movie</button>
+          <div class="movie-detail-summary">
+            <div class="movie-detail-poster-card">
+              <img id="movieDetailPoster" alt="Movie poster">
             </div>
+            <div class="modal-meta movie-detail-copy">
+              <p id="movieModalType" class="movie-detail-kicker"></p>
+              <h3 id="movieModalTitle"></h3>
+              <div class="movie-detail-facts">
+                <span id="movieModalRating" class="movie-detail-fact"></span>
+                <span id="movieModalDate" class="movie-detail-fact"></span>
+                <span id="movieModalCaptionStatus" class="movie-detail-fact"></span>
+              </div>
+              <p id="movieModalGenre"></p>
+              <p id="movieModalDesc"></p>
+              <p id="moviePlaybackNote" class="movie-playback-note"></p>
+              <div class="movie-detail-control-row">
+                <button id="movieSubtitleToggle" class="secondary-btn" type="button">Captions Off</button>
+                <button id="movieSettingsButton" class="secondary-btn icon-btn" type="button" aria-label="Player settings">Settings</button>
+              </div>
+              <div id="movieSettingsPanel" class="movie-settings-panel hidden">
+                <label class="settings-field">
+                  <span>Quality</span>
+                  <select id="movieQualitySelect"></select>
+                </label>
+                <label class="settings-field">
+                  <span>Subtitle Language</span>
+                  <select id="movieSubtitleLanguage"></select>
+                </label>
+              </div>
+              <section id="episodePanel" class="episode-panel hidden">
+                <div class="episode-header">
+                  <h4>Seasons and Episodes</h4>
+                  <select id="seasonSelect" class="episode-select"></select>
+                </div>
+                <div id="episodeList" class="episode-list"></div>
+              </section>
+              <div class="modal-actions">
+                <button id="moviePlayButton" class="primary-btn">Play</button>
+                <button id="movieDownloadButton" class="secondary-btn">Download Movie</button>
+              </div>
+            </div>
+          </div>
+          <div class="movie-detail-preview hidden">
+            <video id="moviePlayer" controls playsinline webkit-playsinline preload="metadata" class="movie-player"></video>
           </div>
         </div>
       </div>

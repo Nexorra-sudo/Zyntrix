@@ -253,9 +253,14 @@ const movieSubtitleLanguage = document.getElementById('movieSubtitleLanguage');
 const episodePanel = document.getElementById('episodePanel');
 const seasonSelect = document.getElementById('seasonSelect');
 const episodeList = document.getElementById('episodeList');
+const movieModalType = document.getElementById('movieModalType');
 const movieModalTitle = document.getElementById('movieModalTitle');
+const movieModalRating = document.getElementById('movieModalRating');
+const movieModalDate = document.getElementById('movieModalDate');
+const movieModalCaptionStatus = document.getElementById('movieModalCaptionStatus');
 const movieModalGenre = document.getElementById('movieModalGenre');
 const movieModalDesc = document.getElementById('movieModalDesc');
+const moviePlaybackNote = document.getElementById('moviePlaybackNote');
 const movieDownloadButton = document.getElementById('movieDownloadButton');
 const movieModalClose = document.getElementById('movieModalClose');
 const movieModalCloseBtn = document.getElementById('movieModalCloseBtn');
@@ -558,10 +563,47 @@ function renderPersonalizedRows(items = movies) {
   }
 }
 
+function formatMovieRating(movie) {
+  const rawRating = movie?.rating ?? movie?.score ?? movie?.voteAverage ?? movie?.imdbRating ?? movie?.imdb_score;
+  const rating = Number(rawRating);
+  if (Number.isFinite(rating) && rating > 0) {
+    return `Rating ${rating.toFixed(rating >= 10 ? 0 : 1)}/10`;
+  }
+  if (typeof rawRating === 'string' && rawRating.trim()) {
+    return `Rating ${rawRating.trim()}`;
+  }
+  return 'Rating N/A';
+}
+
+function formatMovieDate(movie) {
+  if (movie?.releaseDate) return movie.releaseDate;
+  if (movie?.year) return String(movie.year);
+  return 'Date unavailable';
+}
+
+function updateCaptionStatus() {
+  const hasCaptions = !movieSubtitleLanguage?.disabled && (currentPlaybackBundle?.subtitles?.length || 0) > 0;
+  const label = hasCaptions
+    ? (subtitlesEnabled && movieSubtitleLanguage.value ? `Captions: ${movieSubtitleLanguage.value}` : 'Captions Off')
+    : 'Captions unavailable';
+
+  if (movieModalCaptionStatus) {
+    movieModalCaptionStatus.textContent = label;
+  }
+
+  if (movieSubtitleToggle) {
+    movieSubtitleToggle.textContent = hasCaptions && subtitlesEnabled ? 'Captions On' : 'Captions Off';
+  }
+}
+
 function setMovieModalState(message, state = 'loading') {
-  movieModalDesc.textContent = message;
+  if (moviePlaybackNote) {
+    moviePlaybackNote.textContent = message;
+  }
   moviePlayButton.disabled = true;
   movieDownloadButton.disabled = true;
+  movieSubtitleToggle.disabled = true;
+  movieSettingsButton.disabled = true;
   movieModal.dataset.state = state;
 }
 
@@ -611,12 +653,18 @@ async function applyMovieSource(movie, source, { autoplay = false, resumeAt = 0 
 
   moviePlayButton.disabled = false;
   movieDownloadButton.disabled = false;
+  movieSettingsButton.disabled = false;
   movieModal.dataset.state = 'ready';
+  if (moviePlaybackNote) {
+    moviePlaybackNote.textContent = autoplay ? '' : 'Ready to play in fullscreen.';
+  }
 
   if (autoplay) {
     const played = await startMoviePlayback();
     if (!played) {
-      movieModalDesc.textContent = `${movie.description}\n\nTap Play or tap the video area to start the movie.`;
+      if (moviePlaybackNote) {
+        moviePlaybackNote.textContent = 'Tap Play again if the movie did not start automatically.';
+      }
     }
   }
 }
@@ -635,10 +683,12 @@ function resetPlayerSurface() {
   moviePlayer.load();
   movieQualitySelect.innerHTML = '';
   movieSubtitleLanguage.innerHTML = '';
-  movieSubtitleToggle.textContent = 'Subtitles Off';
+  movieSubtitleToggle.textContent = 'Captions Off';
   movieSubtitleToggle.disabled = true;
   movieQualitySelect.disabled = true;
   movieSubtitleLanguage.disabled = true;
+  movieSettingsButton.disabled = true;
+  updateCaptionStatus();
 }
 
 function revealPlayerSurface() {
@@ -648,13 +698,13 @@ function revealPlayerSurface() {
 function applySubtitleSelection() {
   clearSubtitleTracks();
   if (!currentPlaybackBundle || !subtitlesEnabled || !movieSubtitleLanguage.value) {
-    movieSubtitleToggle.textContent = 'Subtitles Off';
+    updateCaptionStatus();
     return;
   }
 
   const selected = currentPlaybackBundle.subtitles.find(item => item.language === movieSubtitleLanguage.value) || currentPlaybackBundle.subtitles[0];
   if (!selected?.url) {
-    movieSubtitleToggle.textContent = 'Subtitles Off';
+    updateCaptionStatus();
     return;
   }
 
@@ -673,7 +723,7 @@ function applySubtitleSelection() {
   Array.from(moviePlayer.textTracks || []).forEach(textTrack => {
     textTrack.mode = 'disabled';
   });
-  movieSubtitleToggle.textContent = `Subtitles On`;
+  updateCaptionStatus();
 }
 
 function renderPlaybackSettings(bundle) {
@@ -719,6 +769,7 @@ function renderPlaybackSettings(bundle) {
     movieQualitySelect.disabled = true;
   }
 
+  movieSettingsButton.disabled = false;
   applySubtitleSelection();
 }
 
@@ -753,9 +804,8 @@ function renderEpisodeSelector(movie) {
     button.addEventListener('click', async () => {
       selectedEpisode = episode;
       renderEpisodeSelector(movie);
-      revealPlayerSurface();
-      setMovieModalState(`${movie.description}\n\nLoading Season ${selectedSeason}, Episode ${selectedEpisode}...`);
-      await loadSelectedPlayback(movie, { autoplay: true });
+      setMovieModalState(`Loading Season ${selectedSeason}, Episode ${selectedEpisode}...`);
+      await loadSelectedPlayback(movie);
     });
     episodeList.appendChild(button);
   }
@@ -765,7 +815,7 @@ async function loadSelectedPlayback(movie, { autoplay = false } = {}) {
   const bundle = await fetchPlaybackBundle(movie, { season: selectedSeason, episode: selectedEpisode });
   if (!bundle?.url) {
     setMovieModalState(
-      `${movie.description}\n\nThis episode is not available right now. Try another episode or download instead.`,
+      'This episode is not available right now. Try another episode or download instead.',
       'error'
     );
     return;
@@ -847,9 +897,11 @@ async function fetchMovieData(query = 'popular') {
       id: item.subjectId || `api-${index}`,
       title: item.title || 'Untitled',
       year: item.releaseDate ? item.releaseDate.split('-')[0] : 'Unknown',
+      releaseDate: item.releaseDate || '',
       genre: item.genres?.join(', ') || 'Unknown',
       description: item.description || 'No description available.',
       poster: item.cover?.url || item.thumbnail || 'https://via.placeholder.com/320x480?text=No+Image',
+      rating: item.rating || item.score || item.voteAverage || item.imdbRating || '',
       videoSrc: '',
       detailUrl: `https://cineverse.name.ng/${item.subjectType === 1 ? 'movie' : 'tv'}/${item.subjectId}`,
       category: item.subjectType === 2 ? 'Series' : 'Movie',
@@ -1383,13 +1435,24 @@ async function openMovieModal(movieId) {
     movieDetailBackdrop.style.backgroundImage = `url("${movie.poster}")`;
   }
 
+  if (movieModalType) {
+    movieModalType.textContent = movie.subjectType === 2 ? 'Series Details' : 'Movie Details';
+  }
   movieModalTitle.textContent = movie.title;
-  movieModalGenre.textContent = `${movie.genre} - ${movie.year}`;
+  if (movieModalRating) {
+    movieModalRating.textContent = formatMovieRating(movie);
+  }
+  if (movieModalDate) {
+    movieModalDate.textContent = formatMovieDate(movie);
+  }
+  movieModalGenre.textContent = movie.genre;
   movieModalDesc.textContent = movie.description;
+  if (moviePlaybackNote) {
+    moviePlaybackNote.textContent = '';
+  }
   renderEpisodeSelector(movie);
   movieModal.classList.remove('hidden');
-  revealPlayerSurface();
-  setMovieModalState(`${movie.description}\n\nPreparing the player...`);
+  setMovieModalState('Preparing the player...');
 
   const bundle = await fetchPlaybackBundle(movie, {
     season: selectedSeason,
@@ -1400,7 +1463,7 @@ async function openMovieModal(movieId) {
 
   if (!bundle?.url) {
     setMovieModalState(
-      `${movie.description}\n\nThis title is not ready for direct playback right now. Try downloading it instead.`,
+      'This title is not ready for direct playback right now. Try downloading it instead.',
       'error'
     );
     return;
@@ -1408,7 +1471,7 @@ async function openMovieModal(movieId) {
 
   renderPlaybackSettings(bundle);
   await applyMovieSource(movie, bundle.url, {
-    autoplay: true,
+    autoplay: false,
     resumeAt: savedState?.completed ? 0 : (savedState?.progress || 0)
   });
 }
@@ -1423,25 +1486,45 @@ function closeMovieModal() {
   activeMovie = null;
 }
 
+async function requestMovieFullscreen() {
+  if (!moviePlayer) return;
+
+  try {
+    if (moviePlayer.requestFullscreen) {
+      await moviePlayer.requestFullscreen();
+      return;
+    }
+  } catch (error) {
+    console.warn('Standard fullscreen failed', error);
+  }
+
+  try {
+    if (typeof moviePlayer.webkitEnterFullscreen === 'function') {
+      moviePlayer.webkitEnterFullscreen();
+    }
+  } catch (error) {
+    console.warn('WebKit fullscreen failed', error);
+  }
+}
+
 function playMovie() {
   if (!activeMovie) return;
 
   const start = async () => {
     if (!moviePlayer.src) {
-      revealPlayerSurface();
-      setMovieModalState(`${activeMovie.description}\n\nPreparing the player...`);
-      await loadSelectedPlayback(activeMovie, { autoplay: true });
+      setMovieModalState('Preparing the player...');
+      await loadSelectedPlayback(activeMovie);
+      if (!moviePlayer.src) return;
+    }
+
+    revealPlayerSurface();
+    const played = await startMoviePlayback();
+    if (played) {
+      await requestMovieFullscreen();
       return;
     }
-
-    const played = await startMoviePlayback();
-    if (played && moviePlayer.requestFullscreen) {
-      moviePlayer.requestFullscreen().catch(() => {});
-    }
-
-    if (played) return;
     setMovieModalState(
-      `${activeMovie?.description || 'Unable to start playback.'}\n\nThe video could not start in this player. Try downloading it instead.`,
+      'The video could not start in this player. Try downloading it instead.',
       'error'
     );
   };
@@ -1485,6 +1568,7 @@ featuredPlayButton?.addEventListener('click', playFeaturedMovie);
 featuredTrailerButton?.addEventListener('click', openFeaturedTrailer);
 featuredDownloadButton?.addEventListener('click', downloadFeaturedMovie);
 movieSettingsButton?.addEventListener('click', () => {
+  if (movieSettingsButton.disabled) return;
   movieSettingsPanel.classList.toggle('hidden');
 });
 movieSubtitleToggle?.addEventListener('click', () => {
@@ -1506,7 +1590,10 @@ movieQualitySelect?.addEventListener('change', async () => {
 
   const resumeAt = Number.isFinite(moviePlayer.currentTime) ? moviePlayer.currentTime : 0;
   const shouldContinuePlaying = !!moviePlayer.src && !moviePlayer.paused && !moviePlayer.ended;
-  revealPlayerSurface();
+  const wasPreviewVisible = !movieDetailPreview?.classList.contains('hidden');
+  if (wasPreviewVisible || shouldContinuePlaying) {
+    revealPlayerSurface();
+  }
 
   await applyMovieSource(activeMovie, source, {
     autoplay: shouldContinuePlaying,
@@ -1520,9 +1607,8 @@ seasonSelect?.addEventListener('change', async () => {
   selectedSeason = Number(seasonSelect.value || 1);
   selectedEpisode = 1;
   renderEpisodeSelector(activeMovie);
-  revealPlayerSurface();
-  setMovieModalState(`${activeMovie.description}\n\nLoading Season ${selectedSeason}, Episode ${selectedEpisode}...`);
-  await loadSelectedPlayback(activeMovie, { autoplay: true });
+  setMovieModalState(`Loading Season ${selectedSeason}, Episode ${selectedEpisode}...`);
+  await loadSelectedPlayback(activeMovie);
 });
 
 selectPictures.addEventListener('click', () => enterMode('images'));

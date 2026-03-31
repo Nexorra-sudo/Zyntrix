@@ -281,8 +281,12 @@ body::before {
 
 .hero-visual-frame {
   position: relative;
+  display: grid;
+  align-content: end;
+  gap: 12px;
   height: 100%;
   min-height: 320px;
+  padding: 20px;
   border-radius: 30px;
   overflow: hidden;
   background:
@@ -305,7 +309,7 @@ body::before {
 }
 
 .hero-visual-card {
-  position: absolute;
+  position: relative;
   display: inline-flex;
   align-items: center;
   padding: 10px 16px;
@@ -319,20 +323,16 @@ body::before {
 }
 
 .hero-visual-card-main {
-  left: 18px;
-  right: 18px;
-  bottom: 18px;
   justify-content: center;
+  width: 100%;
 }
 
 .hero-visual-card-top {
-  top: 18px;
-  right: 18px;
+  justify-self: end;
 }
 
 .hero-visual-card-bottom {
-  left: 18px;
-  bottom: 76px;
+  justify-self: start;
 }
 
 .gallery {
@@ -576,24 +576,29 @@ body::before {
 
 .movie-detail-backdrop {
   position: absolute;
-  inset: 0 0 auto;
-  height: 320px;
+  inset: 0;
   background-position: center;
   background-size: cover;
-  opacity: 0.35;
+  opacity: 0.28;
+  filter: blur(10px) saturate(1.08);
+  transform: scale(1.06);
 }
 
 .movie-detail-backdrop::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 7, 20, 0.22), rgba(8, 7, 20, 0.9) 72%, rgba(8, 7, 20, 1));
+  background:
+    linear-gradient(180deg, rgba(8, 7, 20, 0.3), rgba(8, 7, 20, 0.86) 48%, rgba(8, 7, 20, 0.98)),
+    radial-gradient(circle at top center, rgba(255, 255, 255, 0.12), transparent 42%);
 }
 
 .movie-detail-preview {
   position: relative;
   z-index: 1;
-  padding: 28px 28px 0;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .movie-player-toolbar {
@@ -643,12 +648,21 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0 28px 30px;
+  gap: 24px;
+  padding: 36px 28px 30px;
+}
+
+.movie-detail-summary {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
 }
 
 .movie-detail-poster-card {
   width: min(240px, 62vw);
-  margin-top: -58px;
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.14);
@@ -666,9 +680,18 @@ body::before {
 
 .movie-detail-copy {
   width: 100%;
-  max-width: 720px;
-  padding: 22px 8px 0;
+  max-width: 760px;
+  padding: 0 8px;
   text-align: center;
+}
+
+.movie-detail-kicker {
+  margin: 0 0 10px;
+  color: #d4c7ff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .movie-detail-copy h3 {
@@ -680,8 +703,46 @@ body::before {
   color: #d1c9f4;
 }
 
+.movie-detail-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 14px 0 16px;
+}
+
+.movie-detail-fact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #f5f1ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.movie-playback-note {
+  margin: 16px auto 0;
+  max-width: 56ch;
+  min-height: 1.5em;
+  color: #f6d59f;
+}
+
+.movie-detail-control-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 .movie-detail-copy .modal-actions {
   justify-content: center;
+  margin-top: 22px;
 }
 
 .episode-panel {
@@ -792,6 +853,12 @@ body::before {
 .secondary-btn {
   background: rgba(124, 115, 255, 0.12);
   color: #4f46e5;
+}
+
+.movie-detail-card .secondary-btn {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.12);
 }
 
 .close-btn {
@@ -917,12 +984,16 @@ body::before {
 }
 
 .cinema-hero-visual {
-  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: end;
   min-height: 260px;
 }
 
 .cinema-hero-poster {
-  position: absolute;
+  position: relative;
+  min-height: 220px;
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.18);
@@ -948,18 +1019,14 @@ body::before {
 }
 
 .cinema-hero-poster-main {
-  inset: 0 56px 0 0;
+  min-height: 260px;
   background-image:
     linear-gradient(180deg, rgba(12, 10, 31, 0.1), rgba(12, 10, 31, 0.76)),
     url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80');
 }
 
 .cinema-hero-poster-side {
-  width: 136px;
-  height: 188px;
-  right: 0;
-  bottom: 18px;
-  transform: rotate(8deg);
+  min-height: 220px;
   background-image:
     linear-gradient(180deg, rgba(12, 10, 31, 0.12), rgba(12, 10, 31, 0.78)),
     url('https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=700&q=80');
@@ -1509,27 +1576,41 @@ body::before {
   .cinema-hero,
   .movie-row,
   .featured-hero,
-  .home-cinema-section { padding: 18px 16px; border-radius: 24px; }
+  .home-cinema-section { padding: 20px 16px; border-radius: 24px; }
   .gallery-hero,
-  .cinema-hero { grid-template-columns: minmax(0, 1.15fr) minmax(180px, 280px); gap: 18px; }
-  .hero-visual { min-height: 260px; }
-  .hero-visual-frame { min-height: 260px; border-radius: 24px; }
-  .hero-visual-card { font-size: 0.85rem; }
+  .cinema-hero {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    text-align: center;
+  }
+  .hero-visual {
+    min-height: 220px;
+    max-height: 280px;
+  }
+  .hero-visual-frame {
+    min-height: 220px;
+    max-height: 280px;
+    border-radius: 20px;
+  }
+  .hero-visual-card { font-size: 0.8rem; }
   .cinema-hero { position: relative; }
-  .cinema-hero-visual { min-height: 220px; }
-  .cinema-hero-poster-main { inset: 0 38px 0 0; }
+  .cinema-hero-visual {
+    grid-template-columns: 1fr;
+    min-height: 200px;
+    margin: 0 auto;
+    max-width: 300px;
+  }
   .cinema-hero-poster-side {
-    width: 118px;
-    height: 164px;
-    bottom: 10px;
+    min-height: 180px;
   }
   .gallery { column-count: 1; }
   .featured-hero {
-    grid-template-columns: minmax(0, 1.3fr) minmax(160px, 240px);
-    gap: 18px;
+    grid-template-columns: 1fr;
+    gap: 20px;
     min-height: 0;
     align-items: center;
-    padding: 18px;
+    padding: 20px 16px;
+    text-align: center;
   }
   .featured-hero-backdrop {
     transform: scale(1.02);
@@ -1546,31 +1627,36 @@ body::before {
   .featured-hero-poster {
     position: relative;
     width: 100%;
-    justify-content: flex-start;
-    margin-top: -6px;
+    justify-content: center;
+    margin-top: 0;
   }
   .featured-hero-poster img {
-    width: min(58vw, 250px);
-    max-width: 250px;
+    width: min(50vw, 200px);
+    max-width: 200px;
     border-radius: 20px;
     box-shadow: 0 24px 46px rgba(4, 3, 17, 0.42);
   }
   .featured-hero h2 {
     max-width: none;
-    font-size: clamp(2rem, 8vw, 3rem);
+    font-size: clamp(1.6rem, 7vw, 2.4rem);
   }
   .featured-description {
     max-width: none;
     font-size: 0.95rem;
     line-height: 1.65;
+    margin: 0 auto;
   }
   .featured-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+    justify-content: center;
   }
   .featured-actions .primary-btn,
   .featured-actions .secondary-btn { width: auto; }
+  .featured-genres {
+    justify-content: center;
+  }
   .row-header { flex-direction: column; }
   .row-count { align-self: flex-start; }
   .row-description {
@@ -1607,10 +1693,15 @@ body::before {
   .home-showcase .row-header {
     margin-bottom: 14px;
   }
-  .movie-detail-preview { padding: 16px 16px 0; }
-  .movie-detail-body { padding: 0 16px 20px; }
-  .movie-detail-poster-card { margin-top: -42px; }
-  .movie-player-toolbar { flex-direction: column; }
+  .movie-detail-body { padding: 28px 16px 20px; }
+  .movie-detail-summary { gap: 16px; }
+  .movie-detail-poster-card { width: min(220px, 70vw); }
+  .movie-detail-copy { padding: 0; }
+  .movie-detail-facts,
+  .movie-detail-control-row,
+  .movie-detail-copy .modal-actions { flex-direction: column; }
+  .movie-detail-fact,
+  .movie-detail-control-row .secondary-btn { width: 100%; }
   .movie-settings-panel { grid-template-columns: 1fr; }
   .episode-header { flex-direction: column; align-items: stretch; }
   .modal { padding: 12px; }
