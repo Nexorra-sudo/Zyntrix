@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=512&q=80&fm=png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -66,11 +66,25 @@
     </section>
 
     <main id="imageView" class="hidden">
-      <section class="hero-card">
-        <div>
+      <section class="hero-card gallery-hero">
+        <div class="hero-copy">
           <p class="eyebrow">Zynrest Gallery</p>
           <h2>Browse, search, and download beautiful photos instantly.</h2>
           <p>Create your own visual board with the feel of Pinterest, now installable as a PWA.</p>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="hero-visual-frame">
+            <div class="hero-visual-glow"></div>
+            <div class="hero-visual-card hero-visual-card-main">
+              <span>Editorial Mood</span>
+            </div>
+            <div class="hero-visual-card hero-visual-card-top">
+              <span>Golden Hour</span>
+            </div>
+            <div class="hero-visual-card hero-visual-card-bottom">
+              <span>Coastal Escape</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -84,6 +98,14 @@
           <p class="eyebrow">ZYNIFLIX</p>
           <h2>Stream movies in cinematic style.</h2>
           <p>Search, browse, and play the latest titles with a refined movie experience.</p>
+        </div>
+        <div class="cinema-hero-visual" aria-hidden="true">
+          <div class="cinema-hero-poster cinema-hero-poster-main">
+            <span>Now Showing</span>
+          </div>
+          <div class="cinema-hero-poster cinema-hero-poster-side">
+            <span>Tonight's Pick</span>
+          </div>
         </div>
       </section>
 

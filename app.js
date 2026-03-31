@@ -227,6 +227,7 @@ const topbar = document.querySelector('.topbar');
 const cinemaRows = document.getElementById('cinemaRows');
 const movieResults = document.getElementById('movieResults');
 const emptyCinemaState = document.getElementById('emptyCinemaState');
+const homeCinemaSection = document.querySelector('.home-cinema-section');
 const brandTitle = document.querySelector('.brand h1');
 const brandSubtitle = document.querySelector('.brand p');
 const searchLabel = document.querySelector('.search-label');
@@ -825,8 +826,13 @@ function stopRailAutoScroll(rail) {
   delete rail.dataset.timerId;
 }
 
+function prefersRailAutoScroll() {
+  return !window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
+}
+
 function startRailAutoScroll(rail) {
   if (!rail || rail.dataset.timerId || rail.dataset.paused === 'true') return;
+  if (!prefersRailAutoScroll()) return;
   if (rail.scrollWidth - rail.clientWidth <= 24) return;
 
   rail.dataset.direction = rail.dataset.direction || '1';
@@ -848,6 +854,12 @@ function startRailAutoScroll(rail) {
 
 function setupRailAutoScroll(rail) {
   if (!rail) return;
+
+  if (!prefersRailAutoScroll()) {
+    rail.dataset.paused = 'true';
+    stopRailAutoScroll(rail);
+    return;
+  }
 
   const pause = () => {
     rail.dataset.paused = 'true';
@@ -1116,6 +1128,7 @@ function showSelection() {
   imageView.classList.add('hidden');
   cinemaView.classList.add('hidden');
   changeModeBtn.classList.add('hidden');
+  homeCinemaSection?.classList.remove('hidden');
   document.title = 'ZYNTRIX - 2 in 1 Assistant';
   brandTitle.textContent = 'ZYNTRIX';
   brandSubtitle.textContent = 'The 2 in 1 cinematic + photo genic assistant.';
@@ -1127,6 +1140,7 @@ function enterMode(mode) {
   topbar?.classList.remove('hidden');
   viewSelect.classList.add('hidden');
   changeModeBtn.classList.remove('hidden');
+  homeCinemaSection?.classList.add('hidden');
   searchInput.value = '';
 
   if (mode === 'cinema') {
