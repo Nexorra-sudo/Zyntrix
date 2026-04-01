@@ -1584,24 +1584,30 @@ body::before {
     text-align: center;
   }
   .hero-visual {
-    min-height: 220px;
-    max-height: 280px;
+    min-height: 160px;
+    max-height: 200px;
   }
   .hero-visual-frame {
-    min-height: 220px;
-    max-height: 280px;
-    border-radius: 20px;
+    min-height: 160px;
+    max-height: 200px;
+    border-radius: 18px;
   }
   .hero-visual-card { font-size: 0.8rem; }
   .cinema-hero { position: relative; }
   .cinema-hero-visual {
-    grid-template-columns: 1fr;
-    min-height: 200px;
-    margin: 0 auto;
-    max-width: 300px;
+    grid-template-columns: repeat(2, 1fr);
+    min-height: 0;
+    margin: 0;
+    max-width: 100%;
+    gap: 10px;
+  }
+  .cinema-hero-poster-main {
+    min-height: 155px;
+    max-height: 175px;
   }
   .cinema-hero-poster-side {
-    min-height: 180px;
+    min-height: 135px;
+    max-height: 155px;
   }
   .gallery { column-count: 1; }
   .featured-hero {
@@ -1648,12 +1654,21 @@ body::before {
   }
   .featured-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
     justify-content: center;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
   .featured-actions .primary-btn,
-  .featured-actions .secondary-btn { width: auto; }
+  .featured-actions .secondary-btn {
+    flex: 0 0 auto;
+    width: auto !important;
+    white-space: nowrap;
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
   .featured-genres {
     justify-content: center;
   }
@@ -1712,6 +1727,8 @@ body::before {
   .modal-actions { flex-direction: column; }
   .primary-btn,
   .modal-actions .secondary-btn { width: 100%; text-align: center; }
+  .featured-actions .primary-btn,
+  .featured-actions .secondary-btn { width: auto !important; text-align: center; }
 }
 
 @media (hover: none) {

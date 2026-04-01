@@ -21,9 +21,10 @@ let movies = [
   {
     id: 101,
     title: 'War Machine',
-    year: '2026',
-    genre: 'Action, Sci-Fi, Thriller',
-    description: 'A rogue mercenary races to stop a shadow network before it destroys the world.',
+    year: '2017',
+    genre: 'Comedy, Drama, War',
+    description: 'Brad Pitt stars as a charismatic US four-star general who swoops into Afghanistan full of gung-ho ambition only to have his plans undermined by the realities of modern warfare and his own hubris. Based on the book by journalist Michael Hastings.',
+    rating: 6.0,
     poster: 'https://loremflickr.com/320/480/movie,war?lock=101',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/war-machine-YS6GdKiYyz9',
@@ -34,7 +35,8 @@ let movies = [
     title: 'Hoppers',
     year: '2026',
     genre: 'Animation, Adventure, Comedy',
-    description: 'A lively animated adventure full of heart, humor, and impossible stunts.',
+    description: 'Three misfit friends accidentally discover a portal that lets them leap between wildly different parallel worlds. Part heartfelt road-trip, part chaotic adventure, Hoppers is a vibrant animated comedy packed with impossible stunts and genuine emotion.',
+    rating: 7.3,
     poster: 'https://loremflickr.com/320/480/movie,animation?lock=102',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/hoppers-ahkQsEPhCI2',
@@ -43,9 +45,10 @@ let movies = [
   {
     id: 103,
     title: 'Avatar: Fire and Ash',
-    year: '2026',
+    year: '2025',
     genre: 'Sci-Fi, Adventure, Fantasy',
-    description: 'An epic journey across worlds as ancient powers collide with modern firepower.',
+    description: 'The third chapter of James Cameron\'s Avatar saga. Jake Sully and Neytiri face a devastating ancient threat rising from the volcanic Ash People of Pandora, forcing them to forge impossible alliances to protect their family and the world they love.',
+    rating: 7.6,
     poster: 'https://loremflickr.com/320/480/movie,avatar?lock=103',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/avatar-fire-and-ash-ixOH9eSiw5',
@@ -56,7 +59,8 @@ let movies = [
     title: 'GOAT',
     year: '2024',
     genre: 'Sports, Drama',
-    description: 'A true underdog story of a champion fighting to reclaim the crown.',
+    description: 'An unflinching sports drama following a legendary champion\'s brutal comeback after a catastrophic fall from grace. Exploring the psychology of greatness, sacrifice, and what it truly costs to be called the greatest of all time.',
+    rating: 6.8,
     poster: 'https://loremflickr.com/320/480/movie,sports?lock=104',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/goat-u1jZhR4CnV4',
@@ -67,7 +71,8 @@ let movies = [
     title: 'Wuthering Heights',
     year: '2025',
     genre: 'Drama, Romance',
-    description: 'An intense love story that refuses to let the stormy past go silent.',
+    description: 'A bold, visually stunning new adaptation of Emily Brontë\'s gothic masterpiece. The consuming, destructive passion between the orphan Heathcliff and the spirited Catherine Earnshaw unfolds across the wild Yorkshire moors in this timeless tale of obsession and revenge.',
+    rating: 7.2,
     poster: 'https://loremflickr.com/320/480/movie,drama?lock=105',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/wuthering-heights-QoJ5YQ0N0R5',
@@ -77,8 +82,9 @@ let movies = [
     id: 106,
     title: 'Send Help',
     year: '2025',
-    genre: 'Horror, Mystery',
-    description: 'A chilling thriller where every message could be the last one received.',
+    genre: 'Horror, Mystery, Thriller',
+    description: 'A group of friends stranded at a remote off-grid retreat begin receiving cryptic distress messages that appear to predict their deaths one by one. With no signal and no way out, they must unmask the killer hiding among them before time runs out.',
+    rating: 6.5,
     poster: 'https://loremflickr.com/320/480/movie,horror?lock=106',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/send-help-2ZQb3kKUaT2',
@@ -89,7 +95,8 @@ let movies = [
     title: 'Pretty Lethal',
     year: '2025',
     genre: 'Action, Thriller',
-    description: 'A sensational strike team goes dark to pull off the impossible mission.',
+    description: 'A glamorous assassin living a double life discovers her own handlers have put a contract on her head. Armed with deadly precision and nothing left to lose, she wages a relentless one-woman war across three continents to expose the truth.',
+    rating: 6.9,
     poster: 'https://loremflickr.com/320/480/movie,spy?lock=107',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/pretty-lethal-OdivMHNRrz9',
@@ -98,9 +105,10 @@ let movies = [
   {
     id: 108,
     title: 'Scream 7',
-    year: '2026',
-    genre: 'Horror, Thriller',
-    description: 'The streets are haunted once again by the most iconic mask in horror.',
+    year: '2025',
+    genre: 'Horror, Mystery, Thriller',
+    description: 'Ghostface dons the iconic white mask once more in the most personal chapter of the Scream legacy. As the killer\'s identity turns out to be the most shocking yet, survivors old and new must confront their darkest secrets or die screaming.',
+    rating: 6.4,
     poster: 'https://loremflickr.com/320/480/movie,terror?lock=108',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/scream-7-mpxfSgbRWL2',
@@ -110,8 +118,9 @@ let movies = [
     id: 109,
     title: 'The Old Guard 2',
     year: '2025',
-    genre: 'Action, Adventure',
-    description: 'Immortal warriors return with new enemies and higher stakes.',
+    genre: 'Action, Adventure, Fantasy',
+    description: 'Charlize Theron returns as Andy, leading her squad of immortal mercenaries into their most personal battle yet. When a shadow organization discovers the secret to ending their immortality, the Old Guard must fight not just for survival but for the right to die on their own terms.',
+    rating: 7.0,
     poster: 'https://loremflickr.com/320/480/movie,guard?lock=109',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph/detail/the-old-guard-2-Cd1topaO9p3',
@@ -121,8 +130,9 @@ let movies = [
     id: 110,
     title: 'One Piece',
     year: '2025',
-    genre: 'Animation, Adventure',
-    description: 'A legendary journey of pirates, treasure, and impossible dreams.',
+    genre: 'Animation, Adventure, Fantasy',
+    description: 'Monkey D. Luffy and his Straw Hat Pirates sail deeper into the Grand Line, facing legendary warlords and ancient secrets. One of anime\'s most beloved sagas continues with epic battles, unbreakable bonds, and the eternal quest for the legendary One Piece treasure.',
+    rating: 8.7,
     poster: 'https://loremflickr.com/320/480/movie,pirate?lock=110',
     videoSrc: '',
     detailUrl: 'https://moviebox.ph',
@@ -144,6 +154,29 @@ const movieCategories = [
 let deferredPrompt = null;
 let railObserver = null;
 let featuredMovie = null;
+
+// Cinema-style shared RAF scroll state
+const cinemaRails = new Set();
+let cinemaRafActive = false;
+let cinemaGlobalRailIndex = 0;
+
+function cinemaRafLoop() {
+  cinemaRails.forEach(rail => {
+    if (!document.body.contains(rail)) { cinemaRails.delete(rail); return; }
+    if (rail.dataset.visible !== 'true') return;
+    if (rail.dataset.paused === 'true') return;
+    if (rail.dataset.scrollStarted !== 'true') return;
+    const maxScroll = rail.scrollWidth - rail.clientWidth;
+    if (maxScroll <= 24) return;
+    let dir = Number(rail.dataset.scrollDir || '1');
+    rail.scrollLeft += dir * 1.8;
+    if (rail.scrollLeft >= maxScroll - 2) dir = -1;
+    if (rail.scrollLeft <= 2) dir = 1;
+    rail.dataset.scrollDir = String(dir);
+  });
+  if (cinemaRails.size > 0) requestAnimationFrame(cinemaRafLoop);
+  else cinemaRafActive = false;
+}
 let featuredHeroTimer = null;
 let featuredHeroItems = [];
 let featuredHeroIndex = 0;
@@ -567,12 +600,13 @@ function formatMovieRating(movie) {
   const rawRating = movie?.rating ?? movie?.score ?? movie?.voteAverage ?? movie?.imdbRating ?? movie?.imdb_score;
   const rating = Number(rawRating);
   if (Number.isFinite(rating) && rating > 0) {
-    return `Rating ${rating.toFixed(rating >= 10 ? 0 : 1)}/10`;
+    return `IMDb \u2605 ${rating.toFixed(rating >= 10 ? 0 : 1)}/10`;
   }
   if (typeof rawRating === 'string' && rawRating.trim()) {
-    return `Rating ${rawRating.trim()}`;
+    const cleaned = rawRating.trim();
+    return cleaned.startsWith('IMDb') ? cleaned : `IMDb \u2605 ${cleaned}/10`;
   }
-  return 'Rating N/A';
+  return 'IMDb \u2605 N/A';
 }
 
 function formatMovieDate(movie) {
@@ -917,6 +951,35 @@ async function fetchMovieData(query = 'popular') {
   }
 }
 
+// OMDB enrichment — fetches real IMDb descriptions + ratings (free tier, 1000 req/day)
+// Register a free key at https://www.omdbapi.com/apikey.aspx and replace below
+const OMDB_API_KEY = 'trilogy'; // replace with your free OMDB key if desired
+
+async function enrichMovieWithOMDB(movie) {
+  if (!OMDB_API_KEY || !movie?.title) return movie;
+  try {
+    const url = `https://www.omdbapi.com/?t=${encodeURIComponent(movie.title)}&y=${movie.year || ''}&apikey=${OMDB_API_KEY}&plot=full`;
+    const res = await fetch(url);
+    if (!res.ok) return movie;
+    const data = await res.json();
+    if (data.Response !== 'True') return movie;
+    const updated = { ...movie };
+    if (data.Plot && data.Plot !== 'N/A') updated.description = data.Plot;
+    if (data.imdbRating && data.imdbRating !== 'N/A') updated.rating = parseFloat(data.imdbRating);
+    if (data.imdbID) updated.imdbId = data.imdbID;
+    if (data.Genre && data.Genre !== 'N/A') updated.genre = data.Genre;
+    return updated;
+  } catch {
+    return movie;
+  }
+}
+
+async function enrichMoviesWithOMDB(items) {
+  if (!OMDB_API_KEY || OMDB_API_KEY === 'trilogy') return items; // skip if no real key
+  const enriched = await Promise.allSettled(items.map(m => enrichMovieWithOMDB(m)));
+  return enriched.map((result, i) => result.status === 'fulfilled' ? result.value : items[i]);
+}
+
 async function fetchPlaybackBundle(movie, { season = 1, episode = 1 } = {}) {
   if (!movie || !movie.id) return null;
 
@@ -1008,8 +1071,14 @@ function renderFeaturedHero(movie) {
   featuredHeroPoster.alt = `${featuredMovie.title} poster`;
   featuredHeroBackdrop.style.backgroundImage = `linear-gradient(90deg, rgba(8, 7, 21, 0.92), rgba(8, 7, 21, 0.5)), url("${featuredMovie.poster}")`;
 
+  const ratingLabel = formatMovieRating(featuredMovie);
+  const ratingChip = ratingLabel !== 'IMDb \u2605 N/A'
+    ? `<span class="genre-chip" style="color:#f5c518;border-color:rgba(245,197,24,0.35);background:rgba(245,197,24,0.12);">${ratingLabel}</span>`
+    : '';
+
   const chips = [`<span class="genre-chip">${featuredMovie.year || 'Now Showing'}</span>`]
     .concat((featuredMovie.genre || '').split(',').map(item => item.trim()).filter(Boolean).map(item => `<span class="genre-chip">${item}</span>`));
+  if (ratingChip) chips.push(ratingChip);
 
   featuredHeroGenres.innerHTML = chips.join('');
 }
@@ -1043,9 +1112,7 @@ function startFeaturedSlideshow(items = movies) {
 }
 
 function stopRailAutoScroll(rail) {
-  if (!rail?.dataset.timerId) return;
-  clearInterval(Number(rail.dataset.timerId));
-  delete rail.dataset.timerId;
+  if (rail) rail.dataset.scrollStarted = 'false';
 }
 
 function prefersRailAutoScroll() {
@@ -1053,47 +1120,19 @@ function prefersRailAutoScroll() {
 }
 
 function startRailAutoScroll(rail) {
-  if (!rail || rail.dataset.timerId || rail.dataset.paused === 'true') return;
-  if (!prefersRailAutoScroll()) return;
-  if (rail.scrollWidth - rail.clientWidth <= 24) return;
-
-  const isMobileRail = window.matchMedia('(max-width: 760px), (pointer: coarse)').matches;
-  const step = isMobileRail ? 0.75 : 0.55;
-  const delay = isMobileRail ? 16 : 20;
-  rail.dataset.direction = rail.dataset.direction || '1';
-  const timerId = setInterval(() => {
-    if (rail.dataset.visible !== 'true' || rail.dataset.paused === 'true') return;
-
-    const maxScroll = rail.scrollWidth - rail.clientWidth;
-    let direction = Number(rail.dataset.direction || '1');
-    rail.scrollLeft += direction * step;
-
-    if (rail.scrollLeft >= maxScroll - 4) direction = -1;
-    if (rail.scrollLeft <= 4) direction = 1;
-
-    rail.dataset.direction = String(direction);
-  }, delay);
-
-  rail.dataset.timerId = String(timerId);
+  // Delegated to cinema RAF loop — no-op kept for compatibility
 }
 
 function setupRailAutoScroll(rail) {
-  if (!rail) return;
-
-  if (!prefersRailAutoScroll()) {
-    rail.dataset.paused = 'true';
-    stopRailAutoScroll(rail);
+  if (!rail || !prefersRailAutoScroll()) {
+    if (rail) rail.dataset.paused = 'true';
     return;
   }
 
-  const pause = () => {
-    rail.dataset.paused = 'true';
-    stopRailAutoScroll(rail);
-  };
-  const resume = () => {
-    rail.dataset.paused = 'false';
-    if (rail.dataset.visible === 'true') startRailAutoScroll(rail);
-  };
+  const staggerMs = cinemaGlobalRailIndex++ * 2200;
+
+  const pause = () => { rail.dataset.paused = 'true'; };
+  const resume = () => { rail.dataset.paused = 'false'; };
 
   rail.addEventListener('mouseenter', pause);
   rail.addEventListener('mouseleave', resume);
@@ -1104,13 +1143,26 @@ function setupRailAutoScroll(rail) {
     railObserver = new IntersectionObserver(entries => {
       entries.forEach(entry => {
         entry.target.dataset.visible = entry.isIntersecting ? 'true' : 'false';
-        if (entry.isIntersecting) startRailAutoScroll(entry.target);
-        else stopRailAutoScroll(entry.target);
       });
-    }, { threshold: 0.35 });
+    }, { threshold: 0.2 });
   }
 
+  rail.dataset.visible = 'false';
+  rail.dataset.paused = 'false';
+  rail.dataset.scrollDir = '1';
+  rail.dataset.scrollStarted = 'false';
   railObserver.observe(rail);
+  cinemaRails.add(rail);
+
+  if (!cinemaRafActive) {
+    cinemaRafActive = true;
+    requestAnimationFrame(cinemaRafLoop);
+  }
+
+  // Staggered start: each section activates 2.2 s after the previous one
+  setTimeout(() => {
+    if (document.body.contains(rail)) rail.dataset.scrollStarted = 'true';
+  }, staggerMs);
 }
 
 function buildMovieCard(movie, compact = false) {
@@ -1231,6 +1283,19 @@ async function renderCinemaHome() {
   }
 
   movies = dedupeMovies(liveSections.flatMap(section => section.items));
+
+  // Try OMDB enrichment for real IMDb descriptions/ratings (requires valid OMDB_API_KEY)
+  enrichMoviesWithOMDB(movies).then(enriched => {
+    if (enriched !== movies) {
+      movies = enriched;
+      // Re-render featured hero with enriched data
+      if (featuredMovie) {
+        const updated = enriched.find(m => String(m.id) === String(featuredMovie.id));
+        if (updated) renderFeaturedHero(updated);
+      }
+    }
+  });
+
   startFeaturedSlideshow(movies);
   renderPersonalizedRows(movies);
 
