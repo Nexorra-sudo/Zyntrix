@@ -3,209 +3,232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#1b1138">
-  <meta name="description" content="ZYNTRIX is the 2 in 1 cinematic plus photo genic assistant for browsing movies and visuals in one place.">
-  <title>ZYNREST - Image Gallery</title>
+  <meta name="theme-color" content="#141414">
+  <meta name="description" content="ZYNIFLIX - Stream movies and TV shows in cinematic style.">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>ZYNIFLIX</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=512&q=80&fm=png" type="image/png">
-  <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=512&q=80&fm=png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
+  <!-- Netflix-style ZYNIFLIX Intro -->
   <div id="intro" class="intro">
     <div class="intro-content">
-      <div class="brand-mark intro-logo">Z</div>
-      <h1 class="intro-title">ZYNTRIX</h1>
-      <p class="intro-subtitle">The 2 in 1 cinematic + photo genic assistant.</p>
-      <div class="intro-loader"></div>
+      <div class="intro-letters">
+        <span class="intro-letter" data-letter="Z">Z</span>
+        <span class="intro-letter" data-letter="Y">Y</span>
+        <span class="intro-letter" data-letter="N">N</span>
+        <span class="intro-letter" data-letter="I">I</span>
+        <span class="intro-letter" data-letter="F">F</span>
+        <span class="intro-letter" data-letter="L">L</span>
+        <span class="intro-letter" data-letter="I">I</span>
+        <span class="intro-letter" data-letter="X">X</span>
+      </div>
+      <div class="intro-loader-bar"></div>
     </div>
   </div>
 
-  <div class="app-shell" id="appShell" style="display: none;">
-    <header class="topbar hidden">
-      <div class="brand">
-        <div class="brand-mark">Z</div>
-        <div>
-          <h1>ZYNTRIX</h1>
-          <p>The 2 in 1 cinematic + photo genic assistant.</p>
+  <!-- Main App -->
+  <div class="app" id="app" style="display:none;">
+    <!-- Netflix-style Navbar -->
+    <nav class="navbar" id="navbar">
+      <div class="navbar-left">
+        <a href="#" class="logo" id="logoHome">ZYNIFLIX</a>
+        <ul class="nav-links">
+          <li><a href="#" class="nav-link active" data-category="home">Home</a></li>
+          <li><a href="#" class="nav-link" data-category="tv">TV Shows</a></li>
+          <li><a href="#" class="nav-link" data-category="movies">Movies</a></li>
+          <li><a href="#" class="nav-link" data-category="new">New & Popular</a></li>
+          <li><a href="#" class="nav-link" data-category="mylist">My List</a></li>
+        </ul>
+      </div>
+      <div class="navbar-right">
+        <div class="search-container" id="searchContainer">
+          <button class="search-toggle" id="searchToggle" aria-label="Search">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+          <div class="search-box" id="searchBox">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" id="searchInput" placeholder="Titles, people, genres" autocomplete="off">
+            <button class="search-close" id="searchClose">&times;</button>
+          </div>
+        </div>
+        <button class="install-btn hidden" id="installBtn" aria-label="Install">Install App</button>
+        <div class="profile-icon">
+          <img src="https://occ-0-2611-3663.1.nflxso.net/dnm/api/v6/vN7bi_My87NPKvsBoib006Llxzg/AAAABXYofKzCs2BS29qo1ELF7g0KRDm0jmAic3qTTfeCq7_6sVWqzDK8cNzFp3Vc1gPJnM2vL7z9j5MZ8G4y8pE0U5vPL4Yx.png?r=a41" alt="Profile" class="profile-avatar">
         </div>
       </div>
+    </nav>
 
-      <div class="search-panel">
-        <label class="search-label" for="searchInput">Search images</label>
-        <div class="search-box">
-          <input id="searchInput" type="search" placeholder="Search by keyword, theme, or mood" autocomplete="off">
-          <button id="searchButton" aria-label="Search images">Search</button>
+    <!-- Hero Banner -->
+    <section class="hero" id="hero">
+      <div class="hero-backdrop" id="heroBackdrop"></div>
+      <div class="hero-gradient"></div>
+      <div class="hero-content">
+        <p class="hero-badge" id="heroBadge">Top 10</p>
+        <h1 class="hero-title" id="heroTitle">Loading...</h1>
+        <p class="hero-overview" id="heroOverview"></p>
+        <div class="hero-meta" id="heroMeta"></div>
+        <div class="hero-buttons">
+          <button class="btn btn-play" id="heroPlay">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            Play
+          </button>
+          <button class="btn btn-info" id="heroInfo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            More Info
+          </button>
+          <button class="btn btn-list" id="heroAddList" aria-label="Add to My List">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </button>
         </div>
       </div>
-
-      <button id="installBtn" class="install-btn hidden" aria-label="Install ZYNTRIX">Install ZYNTRIX</button>
-      <button id="changeModeBtn" class="secondary-btn hidden" aria-label="Switch experience">Switch Experience</button>
-    </header>
-
-    <div id="viewSelect" class="view-select">
-      <div class="view-select-card">
-        <h2>Which are you looking for today?</h2>
-        <p>Choose the experience you want:</p>
-        <div class="view-options">
-          <button id="selectPictures" type="button" class="option-card active">Pictures View</button>
-          <button id="selectCinema" type="button" class="option-card">Cinematic Section</button>
-        </div>
-      </div>
-    </div>
-
-    <section class="home-cinema-section">
-      <div class="home-cinema-header">
-        <h3>Trending Movies</h3>
-        <p>Discover the latest movies from Cineverse</p>
-      </div>
-      <div id="homeCinemaRows" class="home-cinema-rows"></div>
     </section>
 
-    <main id="imageView" class="hidden">
-      <section class="hero-card gallery-hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Zynrest Gallery</p>
-          <h2>Browse, search, and download beautiful photos instantly.</h2>
-          <p>Create your own visual board with the feel of Pinterest, now installable as a PWA.</p>
-        </div>
-        <div class="hero-visual" aria-hidden="true">
-          <div class="hero-visual-frame">
-            <div class="hero-visual-glow"></div>
-            <div class="hero-visual-card hero-visual-card-main">
-              <span>Editorial Mood</span>
-            </div>
-            <div class="hero-visual-card hero-visual-card-top">
-              <span>Golden Hour</span>
-            </div>
-            <div class="hero-visual-card hero-visual-card-bottom">
-              <span>Coastal Escape</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="gallery" class="gallery"></section>
-      <div id="emptyState" class="empty-state hidden">No results found. Try another search term.</div>
+    <!-- Movie Rows Container -->
+    <main class="main-content" id="mainContent">
+      <div id="rowsContainer" class="rows-container"></div>
+      <div id="searchResults" class="search-results hidden"></div>
+      <div id="myListResults" class="search-results hidden"></div>
     </main>
 
-    <main id="cinemaView" class="hidden">
-      <section class="cinema-hero">
-        <div class="cinema-hero-copy">
-          <p class="eyebrow">ZYNIFLIX</p>
-          <h2>Stream movies in cinematic style.</h2>
-          <p>Search, browse, and play the latest titles with a refined movie experience.</p>
-        </div>
-        <div class="cinema-hero-visual" aria-hidden="true">
-          <div class="cinema-hero-poster cinema-hero-poster-main">
-            <span>Now Showing</span>
-          </div>
-          <div class="cinema-hero-poster cinema-hero-poster-side">
-            <span>Tonight's Pick</span>
-          </div>
-        </div>
-      </section>
-
-      <section id="featuredHero" class="featured-hero">
-        <div class="featured-hero-backdrop" id="featuredHeroBackdrop"></div>
-        <div class="featured-hero-content">
-          <p class="featured-kicker">Featured Tonight</p>
-          <h2 id="featuredHeroTitle">Loading featured movie...</h2>
-          <div id="featuredHeroGenres" class="featured-genres"></div>
-          <p id="featuredHeroDescription" class="featured-description"></p>
-          <div class="featured-actions">
-            <button id="featuredPlayButton" class="primary-btn" type="button">Play Now</button>
-            <button id="featuredTrailerButton" class="secondary-btn" type="button">Watch Trailer</button>
-            <button id="featuredDownloadButton" class="secondary-btn" type="button">Download</button>
+    <!-- Movie Detail Modal (Netflix-style) -->
+    <div class="modal-overlay hidden" id="modalOverlay">
+      <div class="modal" id="movieModal">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <div class="modal-hero">
+          <div class="modal-backdrop" id="modalBackdrop"></div>
+          <div class="modal-gradient"></div>
+          <div class="modal-hero-content">
+            <h2 class="modal-title" id="modalTitle"></h2>
+            <div class="modal-buttons">
+              <button class="btn btn-play" id="modalPlay">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                Play
+              </button>
+              <button class="btn btn-circle" id="modalAddList" title="My List">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              </button>
+              <button class="btn btn-circle" id="modalLike" title="Like">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+              </button>
+            </div>
           </div>
         </div>
-        <div class="featured-hero-poster">
-          <img id="featuredHeroPoster" alt="Featured movie poster">
+        <div class="modal-info">
+          <div class="modal-info-left">
+            <div class="modal-meta-row">
+              <span class="meta-match" id="modalMatch"></span>
+              <span class="meta-year" id="modalYear"></span>
+              <span class="meta-duration" id="modalDuration"></span>
+              <span class="meta-rating" id="modalRating"></span>
+              <span class="meta-quality">HD</span>
+            </div>
+            <p class="modal-description" id="modalDescription"></p>
+          </div>
+          <div class="modal-info-right">
+            <div class="meta-item"><span class="meta-label">Cast:</span> <span id="modalCast"></span></div>
+            <div class="meta-item"><span class="meta-label">Genres:</span> <span id="modalGenres"></span></div>
+            <div class="meta-item"><span class="meta-label">This show is:</span> <span id="modalTags"></span></div>
+          </div>
         </div>
-      </section>
+        <!-- Episodes Section -->
+        <div class="modal-episodes hidden" id="modalEpisodes">
+          <div class="episodes-header">
+            <h3>Episodes</h3>
+            <select id="seasonSelect" class="season-select"></select>
+          </div>
+          <div id="episodeList" class="episode-list"></div>
+        </div>
+        <!-- More Like This -->
+        <div class="modal-similar" id="modalSimilar">
+          <h3>More Like This</h3>
+          <div id="similarGrid" class="similar-grid"></div>
+        </div>
+      </div>
+    </div>
 
-      <section id="cinemaContent" class="cinema-content">
-        <div id="cinemaRows"></div>
-        <div id="movieResults" class="movie-grid hidden"></div>
-        <div id="emptyCinemaState" class="empty-state hidden">No results found. Try another search term.</div>
-      </section>
-    </main>
-
-    <div id="previewModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-backdrop" id="modalClose"></div>
-      <div class="modal-card">
-        <button class="close-btn" id="closeModal" aria-label="Close preview">x</button>
-        <img id="previewImage" alt="Preview image">
-        <div class="modal-meta">
-          <h3 id="modalTitle"></h3>
-          <p id="modalTags"></p>
-          <div class="modal-actions">
-            <button id="downloadButton" class="primary-btn">Download</button>
-            <a id="openButton" class="secondary-btn" target="_blank" rel="noreferrer noopener">Open Original</a>
+    <!-- Video Player -->
+    <div class="player-overlay hidden" id="playerOverlay">
+      <div class="player-container">
+        <div class="player-top-bar">
+          <button class="player-back" id="playerBack">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <span class="player-title" id="playerTitle"></span>
+        </div>
+        <video id="videoPlayer" controls playsinline webkit-playsinline preload="auto" class="video-player"></video>
+        <div class="player-subtitle-controls hidden" id="subtitleControls">
+          <button class="subtitle-btn" id="subtitleBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 12h2"/><path d="M11 12h6"/><path d="M7 16h10"/></svg>
+            <span id="subtitleLabel">Off</span>
+          </button>
+          <div class="subtitle-menu hidden" id="subtitleMenu"></div>
+        </div>
+        <div class="player-not-ready hidden" id="playerNotReady">
+          <div class="not-ready-content">
+            <p id="notReadyMsg">Preparing your movie...</p>
+            <div class="loading-spinner"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <div id="movieModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="movieModalTitle">
-      <div class="modal-backdrop" id="movieModalClose"></div>
-      <div class="modal-card movie-detail-card">
-        <div class="movie-detail-backdrop" id="movieDetailBackdrop"></div>
-        <button class="close-btn" id="movieModalCloseBtn" aria-label="Close movie">x</button>
-        <div class="movie-detail-body">
-          <div class="movie-detail-summary">
-            <div class="movie-detail-poster-card">
-              <img id="movieDetailPoster" alt="Movie poster">
+    <!-- Quality Selection Modal -->
+    <div class="quality-overlay hidden" id="qualityOverlay">
+      <div class="quality-modal">
+        <button class="quality-close" id="qualityClose">&times;</button>
+        <h3 class="quality-title">Choose Streaming Quality</h3>
+        <p class="quality-subtitle" id="qualityMovieName"></p>
+        <div class="quality-options" id="qualityOptions">
+          <button class="quality-btn" data-quality="360">
+            <div class="quality-info">
+              <span class="quality-label">360p</span>
+              <span class="quality-desc">Low - Data Saver</span>
             </div>
-            <div class="modal-meta movie-detail-copy">
-              <p id="movieModalType" class="movie-detail-kicker"></p>
-              <h3 id="movieModalTitle"></h3>
-              <div class="movie-detail-facts">
-                <span id="movieModalRating" class="movie-detail-fact"></span>
-                <span id="movieModalDate" class="movie-detail-fact"></span>
-                <span id="movieModalCaptionStatus" class="movie-detail-fact"></span>
-              </div>
-              <p id="movieModalGenre"></p>
-              <p id="movieModalDesc"></p>
-              <p id="moviePlaybackNote" class="movie-playback-note"></p>
-              <div class="movie-detail-control-row">
-                <button id="movieSubtitleToggle" class="secondary-btn" type="button">Captions Off</button>
-                <button id="movieSettingsButton" class="secondary-btn icon-btn" type="button" aria-label="Player settings">Settings</button>
-              </div>
-              <div id="movieSettingsPanel" class="movie-settings-panel hidden">
-                <label class="settings-field">
-                  <span>Quality</span>
-                  <select id="movieQualitySelect"></select>
-                </label>
-                <label class="settings-field">
-                  <span>Subtitle Language</span>
-                  <select id="movieSubtitleLanguage"></select>
-                </label>
-              </div>
-              <section id="episodePanel" class="episode-panel hidden">
-                <div class="episode-header">
-                  <h4>Seasons and Episodes</h4>
-                  <select id="seasonSelect" class="episode-select"></select>
-                </div>
-                <div id="episodeList" class="episode-list"></div>
-              </section>
-              <div class="modal-actions">
-                <button id="moviePlayButton" class="primary-btn">Play</button>
-                <button id="movieDownloadButton" class="secondary-btn">Download Movie</button>
-              </div>
+            <span class="quality-badge">SD</span>
+          </button>
+          <button class="quality-btn" data-quality="480">
+            <div class="quality-info">
+              <span class="quality-label">480p</span>
+              <span class="quality-desc">Standard Definition</span>
             </div>
-          </div>
-          <div class="movie-detail-preview hidden">
-            <video id="moviePlayer" controls playsinline webkit-playsinline preload="metadata" class="movie-player"></video>
-          </div>
+            <span class="quality-badge">SD</span>
+          </button>
+          <button class="quality-btn" data-quality="720">
+            <div class="quality-info">
+              <span class="quality-label">720p</span>
+              <span class="quality-desc">High Definition</span>
+            </div>
+            <span class="quality-badge">HD</span>
+          </button>
+          <button class="quality-btn recommended" data-quality="1080">
+            <div class="quality-info">
+              <span class="quality-label">1080p</span>
+              <span class="quality-desc">Full HD - Best Quality</span>
+            </div>
+            <span class="quality-badge">FHD</span>
+          </button>
+        </div>
+        <div class="quality-loading hidden" id="qualityLoading">
+          <div class="loading-spinner"></div>
+          <p>Fetching stream...</p>
         </div>
       </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="page-loading hidden" id="pageLoading">
+      <div class="loading-spinner large"></div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

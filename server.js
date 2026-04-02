@@ -2,11 +2,11 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
-const cors = require('cors');
 
 const host = '0.0.0.0';
 const PORT = process.env.PORT || 3000;
 const publicDir = __dirname;
+const VERSION = Date.now();
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -28,20 +28,19 @@ function getCacheControl(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   const base = path.basename(filePath).toLowerCase();
 
-  // These files change between deploys and are loaded by stable URLs.
-  if (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json' || base === 'service-worker.js') {
+  // HTML and service worker should never be cached
+  if (ext === '.html' || base === 'service-worker.js' || base === 'manifest.json') {
+    return 'no-cache, no-store, must-revalidate';
+  }
+
+  // JS and CSS - short cache with versioned URLs
+  if (ext === '.js' || ext === '.css') {
     return 'no-cache';
   }
 
+  // Static assets
   return 'public, max-age=31536000, immutable';
 }
-
-function send(res, statusCode, headers, body) {
-  res.writeHead(statusCode, headers);
-  res.end(body);
-}
-
-
 
 function safePath(urlPath) {
   const decoded = decodeURIComponent(urlPath.split('?')[0]);
@@ -68,57 +67,52 @@ function resolveFile(urlPath) {
 }
 
 const server = http.createServer((req, res) => {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+  res.setHeader('X-App-Version', String(VERSION));
+
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
     res.end();
     return;
   }
-  
+
   if (!req.url) {
-    send(res, 400, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Bad Request');
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Bad Request');
     return;
   }
 
   const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
   if (requestUrl.pathname === '/health') {
-    send(
-      res,
-      200,
-      { 'Content-Type': 'application/json; charset=utf-8' },
-      JSON.stringify({ status: 'ok' })
-    );
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    });
+    res.end(JSON.stringify({ status: 'ok', version: VERSION }));
     return;
   }
-
-
 
   const filePath = resolveFile(requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname);
 
   fs.readFile(filePath, (error, data) => {
     if (error) {
-      send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not Found');
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Not Found');
       return;
     }
 
     const ext = path.extname(filePath).toLowerCase();
-    send(
-      res,
-      200,
-      {
-        'Content-Type': mimeTypes[ext] || 'application/octet-stream',
-        'Cache-Control': getCacheControl(filePath)
-      },
-      data
-    );
+    res.writeHead(200, {
+      'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+      'Cache-Control': getCacheControl(filePath)
+    });
+    res.end(data);
   });
 });
 
 server.listen(PORT, host, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`ZYNIFLIX server running on port ${PORT}`);
 });
