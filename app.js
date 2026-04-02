@@ -755,9 +755,7 @@ qualityOptions?.querySelectorAll('.quality-btn').forEach(btn => {
 
 async function startPlayback(source, quality) {
   playerOverlay.classList.remove('hidden');
-  playerNotReady.classList.remove('hidden');
-  const qualityLabel = /^\d+$/.test(quality) ? `${quality}p` : quality;
-  notReadyMsg.textContent = `Starting ${qualityLabel}...`;
+  playerNotReady.classList.add('hidden');
   videoPlayer.pause(); videoPlayer.removeAttribute('src'); videoPlayer.load();
   clearSubs();
   playerActive = true; currentSubtitles = source.subtitles || []; activeSubLang = '';
@@ -783,7 +781,6 @@ async function startPlayback(source, quality) {
   try { await videoPlayer.play(); } catch {}
 
   setTimeout(() => {
-    playerNotReady.classList.add('hidden');
     try {
       if (playerOverlay.requestFullscreen) playerOverlay.requestFullscreen();
       else if (playerOverlay.webkitRequestFullscreen) playerOverlay.webkitRequestFullscreen();
