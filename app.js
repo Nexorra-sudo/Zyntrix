@@ -92,6 +92,7 @@ const installPrompt = $('installPrompt');
 const installDismiss = $('installDismiss');
 const castGrid = $('castGrid');
 const modalAddList = $('modalAddList');
+const modalDownload = $('modalDownload');
 
 // ===== UTILS =====
 function getYear(d) { return d ? d.split('-')[0] : ''; }
@@ -102,6 +103,24 @@ function formatDur(s) {
 }
 
 // ===== STORAGE =====
+const CONTINUE_KEY = 'zynflix-continue-v1';
+function loadContinueWatching() { try { return JSON.parse(localStorage.getItem(CONTINUE_KEY)) || []; } catch { return []; } }
+function saveContinueWatching(list) { try { localStorage.setItem(CONTINUE_KEY, JSON.stringify(list)); } catch {} }
+let continueWatching = loadContinueWatching();
+
+function updateContinueWatching(id, title, poster, type, progress, duration, season, episode) {
+  continueWatching = continueWatching.filter(c => String(c.id) !== String(id));
+  if (progress > 0 && progress < 95) {
+    continueWatching.unshift({ id, title, poster, type, progress, duration, season, episode, updated: Date.now() });
+    if (continueWatching.length > 20) continueWatching = continueWatching.slice(0, 20);
+  }
+  saveContinueWatching(continueWatching);
+}
+
+function getContinueProgress(id) {
+  return continueWatching.find(c => String(c.id) === String(id));
+}
+
 function loadList() { try { return JSON.parse(localStorage.getItem(MYLIST_KEY)) || []; } catch { return []; } }
 function saveList() { try { localStorage.setItem(MYLIST_KEY, JSON.stringify(mylist)); } catch {} }
 function loadSearches() { try { return JSON.parse(localStorage.getItem(SEARCH_KEY)) || []; } catch { return []; } }
@@ -254,12 +273,15 @@ function stopHeroRotation() {
 function buildCard(item) {
   const id = item.subjectId || item.id;
   const title = item.title || 'Unknown';
-  const poster = thumbUrl(item);
+  const poster = item.poster || thumbUrl(item);
   const year = getYear(item.releaseDate || item.release_date);
   const rating = item.rating || item.vote_average || '';
   const isSeries = item.subjectType === 2;
   const inList = isInList(id);
   const genres = (item.genres || []).slice(0, 2).join(', ');
+  const progress = item.progress || 0;
+  
+  const progressBar = progress > 0 ? `<div class="progress-bar" style="width:${progress}%"></div>` : '';
 
   return `
     <div class="poster-card" data-id="${id}" data-type="${isSeries ? 'tv' : 'movie'}">
@@ -283,19 +305,38 @@ function buildCard(item) {
           </button>
         </div>
       </div>
+      ${progressBar}
     </div>`;
 }
 
-function buildRow(title, items) {
+function buildRow(title, items, isContinue, isTop10) {
   if (!items.length) return '';
-  return `<section class="movie-row">
+  const rowClass = isTop10 ? 'movie-row top-10-row' : (isContinue ? 'movie-row continue-row' : 'movie-row');
+  const itemsHtml = isTop10 
+    ? items.map((item, idx) => buildTop10Card(item, idx + 1)).join('')
+    : items.map(buildCard).join('');
+  return `<section class="${rowClass}">
     <h2 class="row-title">${title}</h2>
     <div class="row-slider">
       <button class="slider-arrow left" data-dir="-1">&#8249;</button>
-      <div class="row-posters">${items.map(buildCard).join('')}</div>
+      <div class="row-posters">${itemsHtml}</div>
       <button class="slider-arrow right" data-dir="1">&#8250;</button>
     </div>
   </section>`;
+}
+
+function buildTop10Card(item, rank) {
+  const id = item.subjectId || item.id;
+  const type = item.subjectType === 2 ? 'tv' : 'movie';
+  const title = item.title || item.name || 'Unknown';
+  const poster = thumbUrl(item);
+  return `<div class="poster-card top-10-card" data-id="${id}" data-type="${type}">
+    <div class="top-10-rank">${rank}</div>
+    <img src="${poster}" alt="${title}" loading="lazy" onerror="this.style.background='#222'" />
+    <div class="poster-overlay">
+      <div class="poster-title">${title}</div>
+    </div>
+  </div>`;
 }
 
 function setupArrows() {
@@ -347,6 +388,12 @@ async function loadHome() {
   try {
     const trending = await cvPopular();
     allTrending = trending;
+    const top10 = trending.slice(0, 10);
+
+    const continueList = continueWatching.filter(c => {
+      const item = trending.find(t => String(t.subjectId || t.id) === String(c.id));
+      return item && c.progress > 0 && c.progress < 95;
+    });
 
     const actionResults = await cvSearch('action');
     const horrorResults = await cvSearch('horror');
@@ -362,6 +409,8 @@ async function loadHome() {
     const documentaryResults = await cvSearch('documentary');
 
     const rows = [];
+    if (continueList.length) rows.push({ title: 'Continue Watching', items: continueList, isContinue: true });
+    if (top10.length) rows.push({ title: 'Top 10 Movies', items: top10, isTop10: true });
     if (trending.length) rows.push({ title: 'Trending Now', items: trending });
     if (actionResults.length) rows.push({ title: 'Action Movies', items: actionResults });
     if (scifiResults.length) rows.push({ title: 'Sci-Fi & Fantasy', items: scifiResults });
@@ -376,7 +425,7 @@ async function loadHome() {
     if (fantasyResults.length) rows.push({ title: 'Fantasy', items: fantasyResults });
     if (documentaryResults.length) rows.push({ title: 'Documentaries', items: documentaryResults });
 
-    rowsContainer.innerHTML = rows.map(r => buildRow(r.title, r.items)).join('');
+    rowsContainer.innerHTML = rows.map(r => buildRow(r.title, r.items, r.isContinue, r.isTop10)).join('');
     setupArrows();
     bindCards(rowsContainer);
   } catch (e) {
@@ -517,6 +566,9 @@ async function openModal(id, type) {
   // Play
   modalPlay.onclick = () => showQualityPicker(id, isSeries ? 'tv' : 'movie', details);
 
+  // Download
+  modalDownload.onclick = () => showDownloadPicker(id, isSeries ? 'tv' : 'movie', details);
+
   // Watchlist (Add to List button inside modal)
   modalAddList.dataset.listId = id;
   modalAddList.classList.toggle('in-list', isInList(id));
@@ -609,10 +661,22 @@ function closeModal() { modalOverlay.classList.add('hidden'); document.body.styl
 
 // ===== QUALITY PICKER =====
 let pendingId = null, pendingType = null, pendingItem = null, fetchedSource = null;
+let isDownloadMode = false;
 
 function showQualityPicker(id, type, item) {
+  isDownloadMode = false;
   pendingId = id; pendingType = type; pendingItem = item; fetchedSource = null;
   qualityMovieName.textContent = item?.title || item?.name || 'Loading...';
+  qualityOverlay.classList.remove('hidden');
+  qualityOptions.classList.remove('hidden');
+  qualityLoading.classList.add('hidden');
+  fetchSource(id, type);
+}
+
+function showDownloadPicker(id, type, item) {
+  isDownloadMode = true;
+  pendingId = id; pendingType = type; pendingItem = item; fetchedSource = null;
+  qualityMovieName.textContent = `Download: ${item?.title || item?.name || 'Loading...'}`;
   qualityOverlay.classList.remove('hidden');
   qualityOptions.classList.remove('hidden');
   qualityLoading.classList.add('hidden');
@@ -659,6 +723,25 @@ qualityOptions?.querySelectorAll('.quality-btn').forEach(btn => {
     qualityOptions.classList.add('hidden');
     qualityLoading.classList.remove('hidden');
     if (!fetchedSource?.videoUrl) await fetchSource(pendingId, pendingType);
+    
+    if (isDownloadMode) {
+      qualityOverlay.classList.add('hidden');
+      if (!fetchedSource?.videoUrl) {
+        alert('This title is not available for download right now.');
+        pendingId = null; isDownloadMode = false; return;
+      }
+      const url = fetchedSource.qualities?.length 
+        ? fetchedSource.qualities.find(q => (q.quality || q.label || '').toLowerCase().includes(quality))?.downloadUrl || fetchedSource.qualities[0]?.downloadUrl
+        : fetchedSource.videoUrl;
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        alert('Download link not available.');
+      }
+      pendingId = null; isDownloadMode = false;
+      return;
+    }
+    
     closeQualityPicker();
     if (!fetchedSource?.videoUrl) {
       playerOverlay.classList.remove('hidden');
@@ -673,7 +756,8 @@ qualityOptions?.querySelectorAll('.quality-btn').forEach(btn => {
 async function startPlayback(source, quality) {
   playerOverlay.classList.remove('hidden');
   playerNotReady.classList.remove('hidden');
-  notReadyMsg.textContent = `Starting ${quality}p...`;
+  const qualityLabel = /^\d+$/.test(quality) ? `${quality}p` : quality;
+  notReadyMsg.textContent = `Starting ${qualityLabel}...`;
   videoPlayer.pause(); videoPlayer.removeAttribute('src'); videoPlayer.load();
   clearSubs();
   playerActive = true; currentSubtitles = source.subtitles || []; activeSubLang = '';
@@ -695,13 +779,16 @@ async function startPlayback(source, quality) {
 
   videoPlayer.src = url; videoPlayer.load();
   setupSubs();
-  playerNotReady.classList.add('hidden');
 
   try { await videoPlayer.play(); } catch {}
-  try {
-    if (playerOverlay.requestFullscreen) await playerOverlay.requestFullscreen();
-    else if (playerOverlay.webkitRequestFullscreen) playerOverlay.webkitRequestFullscreen();
-  } catch {}
+
+  setTimeout(() => {
+    playerNotReady.classList.add('hidden');
+    try {
+      if (playerOverlay.requestFullscreen) playerOverlay.requestFullscreen();
+      else if (playerOverlay.webkitRequestFullscreen) playerOverlay.webkitRequestFullscreen();
+    } catch {}
+  }, 3000);
 }
 
 // ===== SUBTITLES =====
@@ -872,10 +959,35 @@ document.querySelectorAll('.bottom-nav-item').forEach(btn => {
   };
 });
 
+// ===== TOP NAV =====
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const cat = link.dataset.category;
+    if (cat) loadCategory(cat);
+  });
+});
+
 // ===== MODAL EVENTS =====
 modalClose?.addEventListener('click', closeModal);
 modalOverlay?.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
 playerBack?.addEventListener('click', closePlayer);
+videoPlayer?.addEventListener('timeupdate', () => {
+  if (playerActive && videoPlayer.duration > 0) {
+    const progress = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+    const c = getContinueProgress(pendingId);
+    updateContinueWatching(
+      pendingId,
+      pendingItem?.title || 'Unknown',
+      pendingItem?.cover?.url || pendingItem?.thumbnail || '',
+      pendingType,
+      progress,
+      videoPlayer.duration,
+      currentSeason,
+      currentEpisode
+    );
+  }
+});
 subtitleBtn?.addEventListener('click', () => subtitleMenu?.classList.toggle('hidden'));
 document.addEventListener('click', e => { if (!e.target.closest('.player-subtitle-controls')) subtitleMenu?.classList.add('hidden'); });
 

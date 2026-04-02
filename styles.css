@@ -502,6 +502,79 @@ img { display: block; max-width: 100%; }
   position: relative;
 }
 
+/* Top 10 Row */
+.top-10-row .row-posters {
+  gap: 4px;
+}
+
+.top-10-card {
+  position: relative;
+  flex: 0 0 auto;
+  width: 18%;
+  min-width: 140px;
+  max-width: 200px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.top-10-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  z-index: 5;
+}
+
+.top-10-card img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  display: block;
+}
+
+.top-10-rank {
+  position: absolute;
+  left: -10px;
+  bottom: -5px;
+  font-family: var(--font-display);
+  font-size: 5rem;
+  font-weight: 800;
+  color: #000;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  line-height: 1;
+  z-index: 2;
+}
+
+.top-10-card:nth-child(1) .top-10-rank,
+.top-10-card:nth-child(2) .top-10-rank,
+.top-10-card:nth-child(3) .top-10-rank {
+  color: var(--accent);
+}
+
+/* Continue Watching Row */
+.continue-row .poster-card {
+  position: relative;
+}
+
+.continue-row .poster-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #333;
+}
+
+.continue-row .poster-card .progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
 .row-title {
   font-size: 1.4rem;
   font-weight: 700;
