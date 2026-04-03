@@ -3,7 +3,7 @@
    ============================================ */
 
 // ===== CONFIG =====
-const CV_API = 'https://moviebox.davidcyril.name.ng/api';
+const CV_API = '/api/cv';
 const CV_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
   'Referer': 'https://cineverse.name.ng/',
@@ -879,6 +879,11 @@ async function startPlayback(source, quality) {
     playerNotReady.classList.remove('hidden');
     notReadyMsg.textContent = 'No video source available';
     return;
+  }
+
+  // Use video proxy to avoid CORS
+  if (url.startsWith('http')) {
+    url = '/video-proxy/' + encodeURIComponent(url);
   }
 
   let title = pendingItem?.title || 'Now Playing';
