@@ -190,13 +190,6 @@ async function cvSources(subjectId, season, episode) {
   return data?.data || data || null;
 }
 
-// Get detail path from item and fetch sources
-async function getSourceFromDetailPath(item) {
-  const detailPath = item.detailPath || item.subjectId;
-  if (!detailPath) return null;
-  return await cvSources(detailPath);
-}
-
 // ===== IMAGE HELPERS =====
 function thumbUrl(item) {
   return item.thumbnail || item.cover?.url || item.poster || '';
@@ -694,12 +687,55 @@ async function fetchSource(id, type) {
   const s = type === 'tv' ? currentSeason : null;
   const e = type === 'tv' ? currentEpisode : null;
   
-  let data = await cvSources(id, s, e);
+  // First get info to get detailPath
+  const info = await cvInfo(id);
+  const detailPath = info?.detailPath || id;
   
-  // If no result, try with detailPath approach
+  // Get sources using detailPath
+  let data = await cvSources(detailPath, s, e);
+  
+  // If still no data, try with original id
   if (!data || (!data.url && !data.link && !data.streamUrl && !data.videoUrl && !(data.processedSources?.length) && !(data.downloads?.length))) {
-    data = await getSourceFromDetailPath({ detailPath: id });
+    data = await cvSources(id, s, e);
   }
+  
+  let videoUrl = null;
+  let subtitles = [];
+  let qualities = [];
+
+  if (data) {
+    if (Array.isArray(data.processedSources) && data.processedSources[0]) {
+      videoUrl = data.processedSources[0].downloadUrl || data.processedSources[0].directUrl;
+      qualities = data.processedSources;
+    } else if (Array.isArray(data.downloads) && data.downloads[0]) {
+      videoUrl = data.downloads[0].url;
+      qualities = data.downloads;
+    } else if (data.url) videoUrl = data.url;
+    else if (data.link) videoUrl = data.link;
+    else if (data.streamUrl) videoUrl = data.streamUrl;
+    else if (data.videoUrl) videoUrl = data.videoUrl;
+
+    if (Array.isArray(data.subtitles)) {
+      data.subtitles.forEach((s, i) => {
+        const url = s.url || s.src || '';
+        if (url) subtitles.push({ label: s.label || s.language || `Sub ${i+1}`, language: s.language || s.label || `s${i}`, url });
+      });
+    }
+  }
+  
+  // Also get subtitles from info if available
+  if (info?.subtitles) {
+    const subList = String(info.subtitles).split(',');
+    subList.forEach((lang, i) => {
+      if (lang.trim()) {
+        subtitles.push({ label: lang.trim(), language: lang.trim(), url: '' });
+      }
+    });
+  }
+  
+  fetchedSource = { videoUrl, subtitles, qualities };
+  return fetchedSource;
+}
   
   let videoUrl = null;
   let subtitles = [];
