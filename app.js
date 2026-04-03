@@ -190,6 +190,13 @@ async function cvSources(subjectId, season, episode) {
   return data?.data || data || null;
 }
 
+// Get detail path from item and fetch sources
+async function getSourceFromDetailPath(item) {
+  const detailPath = item.detailPath || item.subjectId;
+  if (!detailPath) return null;
+  return await cvSources(detailPath);
+}
+
 // ===== IMAGE HELPERS =====
 function thumbUrl(item) {
   return item.thumbnail || item.cover?.url || item.poster || '';
@@ -686,7 +693,14 @@ function showDownloadPicker(id, type, item) {
 async function fetchSource(id, type) {
   const s = type === 'tv' ? currentSeason : null;
   const e = type === 'tv' ? currentEpisode : null;
-  const data = await cvSources(id, s, e);
+  
+  let data = await cvSources(id, s, e);
+  
+  // If no result, try with detailPath approach
+  if (!data || (!data.url && !data.link && !data.streamUrl && !data.videoUrl && !(data.processedSources?.length) && !(data.downloads?.length))) {
+    data = await getSourceFromDetailPath({ detailPath: id });
+  }
+  
   let videoUrl = null;
   let subtitles = [];
   let qualities = [];
@@ -699,6 +713,9 @@ async function fetchSource(id, type) {
       videoUrl = data.downloads[0].url;
       qualities = data.downloads;
     } else if (data.url) videoUrl = data.url;
+    else if (data.link) videoUrl = data.link;
+    else if (data.streamUrl) videoUrl = data.streamUrl;
+    else if (data.videoUrl) videoUrl = data.videoUrl;
 
     if (Array.isArray(data.subtitles)) {
       data.subtitles.forEach((s, i) => {
@@ -770,15 +787,22 @@ async function startPlayback(source, quality) {
     if (m) url = m.downloadUrl || m.directUrl || m.url || url;
   }
 
+  if (!url) {
+    playerNotReady.classList.remove('hidden');
+    notReadyMsg.textContent = 'No video source available';
+    return;
+  }
+
   let title = pendingItem?.title || 'Now Playing';
   if (pendingType === 'tv') title += ` S${currentSeason}E${currentEpisode}`;
   title += ` (${quality}p)`;
   playerTitle.textContent = title;
 
-  videoPlayer.src = url; videoPlayer.load();
+  videoPlayer.src = url;
+  videoPlayer.load();
   setupSubs();
 
-  try { await videoPlayer.play(); } catch {}
+  videoPlayer.play().catch(e => {});
 
   setTimeout(() => {
     try {
