@@ -705,12 +705,17 @@ async function fetchSource(id, type) {
   let qualities = [];
 
   if (srcData) {
-    // Exact logic from movie.js
     if (srcData.processedSources?.[0]) {
-      videoUrl = srcData.processedSources[0].downloadUrl || srcData.processedSources[0].directUrl;
-      qualities = srcData.processedSources;
+      const ps = srcData.processedSources[0];
+      videoUrl = ps.streamUrl || ps.directUrl;
+      qualities = srcData.processedSources.map(s => ({
+        quality: s.quality,
+        url: s.streamUrl || s.directUrl,
+        downloadUrl: s.downloadUrl
+      }));
     } else if (srcData.downloads?.[0]) {
-      videoUrl = srcData.downloads[0].url;
+      const dl = srcData.downloads[0];
+      videoUrl = dl.url;
       qualities = srcData.downloads;
     } else if (srcData.url) {
       videoUrl = srcData.url;
