@@ -199,33 +199,13 @@ function backdropUrl(item) {
   return item.cover?.url || item.thumbnail || item.backdrop || '';
 }
 
-// ===== INTRO =====
-function playIntro() {
-  intro.style.display = 'flex';
-  app.style.display = 'none';
-  
-  const hasSeenIntro = sessionStorage.getItem(INTRO_KEY);
-  
-  if (hasSeenIntro) {
-    intro.style.display = 'none';
-    app.style.display = 'block';
-    init().catch(() => {});
-    return;
-  }
-  
-  sessionStorage.setItem(INTRO_KEY, '1');
-  
-  setTimeout(() => {
-    intro.classList.add('fade-out');
-    setTimeout(() => {
-      intro.style.display = 'none';
-      app.style.display = 'block';
-      init().catch(() => {});
-    }, 600);
-  }, 3000);
+// ===== INIT =====
+playIntro = function() {
+  intro.style.display = 'none';
+  app.style.display = 'block';
+  init().catch(() => {});
 }
 
-// ===== INIT =====
 async function init() {
   try { await loadHero(); } catch {}
   try { await loadHome(); } catch {}
@@ -705,16 +685,25 @@ async function fetchSource(id, type) {
   const s = type === 'tv' ? currentSeason : null;
   const e = type === 'tv' ? currentEpisode : null;
   
+  console.log('fetchSource called with id:', id, 'type:', type);
+  console.log('===== START fetchSource =====');
+  console.log('[CLEAN VERSION] Starting...');
+  
   // First get info to get detailPath
   const info = await cvInfo(id);
+  console.log('cvInfo response:', info);
   const detailPath = info?.detailPath || id;
+  console.log('detailPath:', detailPath);
   
   // Get sources using detailPath
   let data = await cvSources(detailPath, s, e);
+  console.log('cvSources response:', data);
   
   // If still no data, try with original id
-  if (!data || (!data.url && !data.link && !data.streamUrl && !data.videoUrl && !(data.processedSources?.length) && !(data.downloads?.length))) {
+  if (!data || (!data.url && !data.link && !data.streamUrl && !data.videoUrl && !(data.processedSources?.length) && !(data.downloads?.length) && !data.sources?.length)) {
+    console.log('Retrying with original id...');
     data = await cvSources(id, s, e);
+    console.log('Retry cvSources response:', data);
   }
   
   let videoUrl = null;
@@ -722,11 +711,20 @@ async function fetchSource(id, type) {
   let qualities = [];
 
   if (data) {
-    if (Array.isArray(data.processedSources) && data.processedSources[0]) {
+    console.log('data keys:', Object.keys(data));
+    // Try more response formats
+    if (Array.isArray(data) && data[0]) {
+      // API returns array directly
+      videoUrl = data[0].url || data[0].link || data[0].downloadUrl || data[0].streamUrl;
+      qualities = data;
+    } else if (Array.isArray(data.sources) && data.sources[0]) {
+      videoUrl = data.sources[0].url || data.sources[0].downloadUrl;
+      qualities = data.sources;
+    } else if (Array.isArray(data.processedSources) && data.processedSources[0]) {
       videoUrl = data.processedSources[0].downloadUrl || data.processedSources[0].directUrl;
       qualities = data.processedSources;
     } else if (Array.isArray(data.downloads) && data.downloads[0]) {
-      videoUrl = data.downloads[0].url;
+      videoUrl = data.downloads[0].url || data.downloads[0].downloadUrl;
       qualities = data.downloads;
     } else if (data.url) videoUrl = data.url;
     else if (data.link) videoUrl = data.link;
@@ -754,34 +752,7 @@ async function fetchSource(id, type) {
   fetchedSource = { videoUrl, subtitles, qualities };
   return fetchedSource;
 }
-  
-  let videoUrl = null;
-  let subtitles = [];
-  let qualities = [];
-
-  if (data) {
-    if (Array.isArray(data.processedSources) && data.processedSources[0]) {
-      videoUrl = data.processedSources[0].downloadUrl || data.processedSources[0].directUrl;
-      qualities = data.processedSources;
-    } else if (Array.isArray(data.downloads) && data.downloads[0]) {
-      videoUrl = data.downloads[0].url;
-      qualities = data.downloads;
-    } else if (data.url) videoUrl = data.url;
-    else if (data.link) videoUrl = data.link;
-    else if (data.streamUrl) videoUrl = data.streamUrl;
-    else if (data.videoUrl) videoUrl = data.videoUrl;
-
-    if (Array.isArray(data.subtitles)) {
-      data.subtitles.forEach((s, i) => {
-        const url = s.url || s.src || '';
-        if (url) subtitles.push({ label: s.label || s.language || `Sub ${i+1}`, language: s.language || s.label || `s${i}`, url });
-      });
-    }
-  }
-  fetchedSource = { videoUrl, subtitles, qualities };
-  return fetchedSource;
-}
-
+   
 function closeQualityPicker() { qualityOverlay.classList.add('hidden'); pendingId = null; }
 
 qualityClose?.addEventListener('click', closeQualityPicker);
@@ -1087,3 +1058,6 @@ async function init() {
   try { await loadHero(); } catch {}
   try { await loadHome(); } catch {}
 }
+
+// Auto-start
+init().catch(() => {});
