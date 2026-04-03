@@ -201,16 +201,27 @@ function backdropUrl(item) {
 
 // ===== INTRO =====
 function playIntro() {
-  if (sessionStorage.getItem(INTRO_KEY)) {
+  intro.style.display = 'flex';
+  app.style.display = 'none';
+  
+  const hasSeenIntro = sessionStorage.getItem(INTRO_KEY);
+  
+  if (hasSeenIntro) {
     intro.style.display = 'none';
     app.style.display = 'block';
     return;
   }
+  
   sessionStorage.setItem(INTRO_KEY, '1');
+  
   setTimeout(() => {
     intro.classList.add('fade-out');
-    setTimeout(() => { intro.style.display = 'none'; app.style.display = 'block'; }, 600);
-  }, 2500);
+    setTimeout(() => {
+      intro.style.display = 'none';
+      app.style.display = 'block';
+      init().catch(() => {});
+    }, 600);
+  }, 3000);
 }
 
 // ===== HERO BANNER =====
