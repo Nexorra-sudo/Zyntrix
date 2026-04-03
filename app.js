@@ -783,10 +783,10 @@ async function fetchSource(id, type) {
   if (srcData) {
     if (srcData.processedSources?.[0]) {
       const ps = srcData.processedSources[0];
-      videoUrl = ps.streamUrl || ps.directUrl;
+      videoUrl = ps.downloadUrl || ps.directUrl || ps.streamUrl;
       qualities = srcData.processedSources.map(s => ({
         quality: s.quality,
-        url: s.streamUrl || s.directUrl,
+        url: s.downloadUrl || s.directUrl || s.streamUrl,
         downloadUrl: s.downloadUrl
       }));
     } else if (srcData.downloads?.[0]) {
@@ -795,9 +795,12 @@ async function fetchSource(id, type) {
       qualities = srcData.downloads;
     } else if (srcData.url) {
       videoUrl = srcData.url;
+    } else if (srcData.videoUrl) {
+      videoUrl = srcData.videoUrl;
     }
     
     console.log('videoUrl found:', videoUrl ? 'YES' : 'NO');
+    console.log('videoUrl value:', videoUrl);
     
     if (srcData.subtitles?.length) {
       subtitles = srcData.subtitles.map((st, i) => ({
