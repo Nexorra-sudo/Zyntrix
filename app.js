@@ -209,6 +209,7 @@ function playIntro() {
   if (hasSeenIntro) {
     intro.style.display = 'none';
     app.style.display = 'block';
+    init().catch(() => {});
     return;
   }
   
@@ -222,6 +223,12 @@ function playIntro() {
       init().catch(() => {});
     }, 600);
   }, 3000);
+}
+
+// ===== INIT =====
+async function init() {
+  try { await loadHero(); } catch {}
+  try { await loadHome(); } catch {}
 }
 
 // ===== HERO BANNER =====
@@ -1077,9 +1084,6 @@ if ('serviceWorker' in navigator) {
 
 // ===== INIT =====
 async function init() {
-  playIntro();
   try { await loadHero(); } catch {}
   try { await loadHome(); } catch {}
 }
-
-init().catch(e => console.error('Init error:', e));
