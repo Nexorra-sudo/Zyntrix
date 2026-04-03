@@ -682,74 +682,53 @@ function showDownloadPicker(id, type, item) {
 }
 
 async function fetchSource(id, type) {
-  const s = type === 'tv' ? currentSeason : null;
-  const e = type === 'tv' ? currentEpisode : null;
+  const s = type === 'tv' ? currentSeason : 1;
+  const e = type === 'tv' ? currentEpisode : 1;
   
-  console.log('fetchSource called with id:', id, 'type:', type);
-  console.log('===== START fetchSource =====');
-  console.log('[CLEAN VERSION] Starting...');
+  console.log('=== fetchSource ===', id, type);
   
-  // First get info to get detailPath
-  const info = await cvInfo(id);
-  console.log('cvInfo response:', info);
-  const detailPath = info?.detailPath || id;
-  console.log('detailPath:', detailPath);
+  // Get info first (like movie.js)
+  const infoRes = await cvFetch(`${CV_API}/info/${id}`);
+  const meta = infoRes?.data?.subject || infoRes?.data;
+  console.log('info response:', meta ? 'got meta' : 'no meta');
   
-  // Get sources using detailPath
-  let data = await cvSources(detailPath, s, e);
-  console.log('cvSources response:', data);
+  // Get sources
+  let sourceUrl = `${CV_API}/sources/${id}`;
+  if (type === 'tv') sourceUrl += `?season=${s}&episode=${e}`;
   
-  // If still no data, try with original id
-  if (!data || (!data.url && !data.link && !data.streamUrl && !data.videoUrl && !(data.processedSources?.length) && !(data.downloads?.length) && !data.sources?.length)) {
-    console.log('Retrying with original id...');
-    data = await cvSources(id, s, e);
-    console.log('Retry cvSources response:', data);
-  }
+  const srcRes = await cvFetch(sourceUrl);
+  const srcData = srcRes?.data || srcRes;
+  console.log('sources response keys:', srcData ? Object.keys(srcData) : 'null');
   
   let videoUrl = null;
   let subtitles = [];
   let qualities = [];
 
-  if (data) {
-    console.log('data keys:', Object.keys(data));
-    // Try more response formats
-    if (Array.isArray(data) && data[0]) {
-      // API returns array directly
-      videoUrl = data[0].url || data[0].link || data[0].downloadUrl || data[0].streamUrl;
-      qualities = data;
-    } else if (Array.isArray(data.sources) && data.sources[0]) {
-      videoUrl = data.sources[0].url || data.sources[0].downloadUrl;
-      qualities = data.sources;
-    } else if (Array.isArray(data.processedSources) && data.processedSources[0]) {
-      videoUrl = data.processedSources[0].downloadUrl || data.processedSources[0].directUrl;
-      qualities = data.processedSources;
-    } else if (Array.isArray(data.downloads) && data.downloads[0]) {
-      videoUrl = data.downloads[0].url || data.downloads[0].downloadUrl;
-      qualities = data.downloads;
-    } else if (data.url) videoUrl = data.url;
-    else if (data.link) videoUrl = data.link;
-    else if (data.streamUrl) videoUrl = data.streamUrl;
-    else if (data.videoUrl) videoUrl = data.videoUrl;
-
-    if (Array.isArray(data.subtitles)) {
-      data.subtitles.forEach((s, i) => {
-        const url = s.url || s.src || '';
-        if (url) subtitles.push({ label: s.label || s.language || `Sub ${i+1}`, language: s.language || s.label || `s${i}`, url });
-      });
+  if (srcData) {
+    // Exact logic from movie.js
+    if (srcData.processedSources?.[0]) {
+      videoUrl = srcData.processedSources[0].downloadUrl || srcData.processedSources[0].directUrl;
+      qualities = srcData.processedSources;
+    } else if (srcData.downloads?.[0]) {
+      videoUrl = srcData.downloads[0].url;
+      qualities = srcData.downloads;
+    } else if (srcData.url) {
+      videoUrl = srcData.url;
+    }
+    
+    console.log('videoUrl found:', videoUrl ? 'YES' : 'NO');
+    
+    if (srcData.subtitles?.length) {
+      subtitles = srcData.subtitles.map((st, i) => ({
+        label: st.label || st.language || `Sub ${i+1}`,
+        language: st.language || st.label || `s${i}`,
+        url: st.url || st.src || ''
+      }));
     }
   }
   
-  // Also get subtitles from info if available
-  if (info?.subtitles) {
-    const subList = String(info.subtitles).split(',');
-    subList.forEach((lang, i) => {
-      if (lang.trim()) {
-        subtitles.push({ label: lang.trim(), language: lang.trim(), url: '' });
-      }
-    });
-  }
-  
   fetchedSource = { videoUrl, subtitles, qualities };
+  console.log('RETURN videoUrl:', videoUrl ? 'FOUND' : 'NULL');
   return fetchedSource;
 }
    
