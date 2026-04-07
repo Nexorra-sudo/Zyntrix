@@ -1,19 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="premiumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f953c6"/>
-      <stop offset="50%" stop-color="#b91bff"/>
-      <stop offset="100%" stop-color="#4f46e5"/>
+    <linearGradient id="zMain" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5a0006"/>
+      <stop offset="18%" stop-color="#8f000b"/>
+      <stop offset="50%" stop-color="#e50914"/>
+      <stop offset="82%" stop-color="#ff4b55"/>
+      <stop offset="100%" stop-color="#7a0008"/>
     </linearGradient>
-    <radialGradient id="lightGlow" cx="40%" cy="35%" r="70%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.5)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-    </radialGradient>
+    <linearGradient id="zShadow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2a0003" stop-opacity=".15"/>
+      <stop offset="100%" stop-color="#000" stop-opacity=".55"/>
+    </linearGradient>
   </defs>
-  <rect width="120" height="120" rx="24" fill="url(#premiumGrad)"/>
-  <circle cx="60" cy="60" r="52" fill="rgba(255,255,255,0.08)"/>
-  <circle cx="60" cy="60" r="48" fill="url(#lightGlow)"/>
-  <path d="M40 32h12l15 30-14 30H43l14-30-14-30z" fill="#ffffff"/>
-  <path d="M70 32h12l-18 60H54l18-60z" fill="#ffffff" opacity="0.95"/>
-  <text x="60" y="84" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="32" fill="rgba(255,255,255,0.95)">Z</text>
+  <rect width="512" height="512" rx="88" fill="#000"/>
+
+  <path d="M130 110h88l166 292h-88z" fill="url(#zMain)"/>
+  <path d="M130 110h252v56H130z" fill="url(#zMain)"/>
+  <path d="M130 346h252v56H130z" fill="url(#zMain)"/>
+
+  <path d="M130 110h42v56h-42z" fill="#7b0009"/>
+  <path d="M340 346h42v56h-42z" fill="#7b0009"/>
+  <path d="M208 166h54l122 180h-54z" fill="#ff6b73" opacity=".28"/>
+  <path d="M130 110h252v292H130z" fill="url(#zShadow)" opacity=".22"/>
 </svg>

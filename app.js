@@ -3,8 +3,8 @@
    ============================================ */
 
 // ===== CONFIG =====
-const CV_API = '/api/cv';
-const CV_HEADERS = {
+const Cineverse_API = 'https://moviebox.davidcyril.name.ng/api';
+const Cineverse_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
   'Referer': 'https://cineverse.name.ng/',
   'Origin': 'https://cineverse.name.ng',
@@ -247,21 +247,7 @@ function showHero(item) {
     ${genres.length ? `<span class="meta-genre">${genres.join(' · ')}</span>` : ''}
   `;
 
-  heroPlay.onclick = () => {
-    const id = item.subjectId || item.id;
-    const type = isSeries ? 'tv' : 'movie';
-    closeModal();
-    (async () => {
-      if (!fetchedSource?.videoUrl) await fetchSource(id, type);
-      if (!fetchedSource?.videoUrl) {
-        playerOverlay.classList.remove('hidden');
-        playerNotReady.classList.remove('hidden');
-        notReadyMsg.textContent = 'This title is not available for streaming right now.';
-        return;
-      }
-      await startPlayback(fetchedSource, '1080p');
-    })();
-  };
+  heroPlay.onclick = () => showQualityPicker(item.subjectId || item.id, isSeries ? 'tv' : 'movie', item);
   heroInfo.onclick = () => openModal(item.subjectId || item.id, isSeries ? 'tv' : 'movie');
 }
 
@@ -371,24 +357,12 @@ function bindCards(container) {
     btn.onclick = (e) => {
       e.stopPropagation();
       const card = btn.closest('.poster-card');
-      const id = btn.dataset.playId;
-      const type = btn.dataset.playType || 'movie';
       const item = {
         subjectId: btn.dataset.playId,
         title: card?.querySelector('.poster-title')?.textContent || '',
         subjectType: btn.dataset.playType === 'tv' ? 2 : 1
       };
-      pendingId = id; pendingType = type; pendingItem = item;
-      (async () => {
-        if (!fetchedSource?.videoUrl) await fetchSource(id, type);
-        if (!fetchedSource?.videoUrl) {
-          playerOverlay.classList.remove('hidden');
-          playerNotReady.classList.remove('hidden');
-          notReadyMsg.textContent = 'This title is not available for streaming right now.';
-          return;
-        }
-        await startPlayback(fetchedSource, '1080p');
-      })();
+      showQualityPicker(btn.dataset.playId, btn.dataset.playType || 'movie', item);
     };
   });
   container.querySelectorAll('[data-list-id]').forEach(btn => {
@@ -587,22 +561,8 @@ async function openModal(id, type) {
     }).join('');
   }
 
-  // Play - directly start playback
-  modalPlay.onclick = () => {
-    closeModal();
-    (async () => {
-      const id = pendingId || (currentMovie?.subjectId || currentMovie?.id);
-      const type = isSeries ? 'tv' : 'movie';
-      if (!fetchedSource?.videoUrl) await fetchSource(id, type);
-      if (!fetchedSource?.videoUrl) {
-        playerOverlay.classList.remove('hidden');
-        playerNotReady.classList.remove('hidden');
-        notReadyMsg.textContent = 'This title is not available for streaming right now.';
-        return;
-      }
-      await startPlayback(fetchedSource, '1080p');
-    })();
-  };
+  // Play
+  modalPlay.onclick = () => showQualityPicker(id, isSeries ? 'tv' : 'movie', details);
 
   // Download
   modalDownload.onclick = () => showDownloadPicker(id, isSeries ? 'tv' : 'movie', details);
@@ -690,17 +650,7 @@ async function loadEpisodes(subjectId, sn) {
   episodeList.querySelectorAll('.episode-item').forEach(item => {
     item.onclick = () => {
       currentEpisode = parseInt(item.dataset.episode);
-      pendingId = subjectId; pendingType = 'tv'; pendingItem = currentMovie;
-      (async () => {
-        if (!fetchedSource?.videoUrl) await fetchSource(subjectId, 'tv');
-        if (!fetchedSource?.videoUrl) {
-          playerOverlay.classList.remove('hidden');
-          playerNotReady.classList.remove('hidden');
-          notReadyMsg.textContent = 'This title is not available for streaming right now.';
-          return;
-        }
-        await startPlayback(fetchedSource, '1080p');
-      })();
+      showQualityPicker(subjectId, 'tv', currentMovie);
     };
   });
 }
@@ -715,46 +665,20 @@ function showQualityPicker(id, type, item) {
   isDownloadMode = false;
   pendingId = id; pendingType = type; pendingItem = item; fetchedSource = null;
   qualityMovieName.textContent = item?.title || item?.name || 'Loading...';
-  qualityOverlay.classList.add('hidden');
-  qualityOptions.classList.add('hidden');
+  qualityOverlay.classList.remove('hidden');
+  qualityOptions.classList.remove('hidden');
   qualityLoading.classList.add('hidden');
-  (async () => {
-    if (!fetchedSource?.videoUrl) await fetchSource(id, type);
-    closeQualityPicker();
-    if (!fetchedSource?.videoUrl) {
-      playerOverlay.classList.remove('hidden');
-      playerNotReady.classList.remove('hidden');
-      notReadyMsg.textContent = 'This title is not available for streaming right now.';
-      return;
-    }
-    await startPlayback(fetchedSource, '1080p');
-  })();
+  fetchSource(id, type);
 }
 
 function showDownloadPicker(id, type, item) {
   isDownloadMode = true;
   pendingId = id; pendingType = type; pendingItem = item; fetchedSource = null;
   qualityMovieName.textContent = `Download: ${item?.title || item?.name || 'Loading...'}`;
-  qualityOverlay.classList.add('hidden');
-  qualityOptions.classList.add('hidden');
+  qualityOverlay.classList.remove('hidden');
+  qualityOptions.classList.remove('hidden');
   qualityLoading.classList.add('hidden');
-  (async () => {
-    if (!fetchedSource?.videoUrl) await fetchSource(id, type);
-    qualityOverlay.classList.add('hidden');
-    if (!fetchedSource?.videoUrl) {
-      alert('This title is not available for download right now.');
-      pendingId = null; isDownloadMode = false; return;
-    }
-    const url = fetchedSource.qualities?.length 
-      ? fetchedSource.qualities[0]?.downloadUrl
-      : fetchedSource.videoUrl;
-    if (url) {
-      window.open(url, '_blank');
-    } else {
-      alert('Download link not available.');
-    }
-    pendingId = null; isDownloadMode = false;
-  })();
+  fetchSource(id, type);
 }
 
 async function fetchSource(id, type) {
@@ -783,10 +707,10 @@ async function fetchSource(id, type) {
   if (srcData) {
     if (srcData.processedSources?.[0]) {
       const ps = srcData.processedSources[0];
-      videoUrl = ps.downloadUrl || ps.directUrl || ps.streamUrl;
+      videoUrl = ps.streamUrl || ps.directUrl;
       qualities = srcData.processedSources.map(s => ({
         quality: s.quality,
-        url: s.downloadUrl || s.directUrl || s.streamUrl,
+        url: s.streamUrl || s.directUrl,
         downloadUrl: s.downloadUrl
       }));
     } else if (srcData.downloads?.[0]) {
@@ -795,12 +719,9 @@ async function fetchSource(id, type) {
       qualities = srcData.downloads;
     } else if (srcData.url) {
       videoUrl = srcData.url;
-    } else if (srcData.videoUrl) {
-      videoUrl = srcData.videoUrl;
     }
     
     console.log('videoUrl found:', videoUrl ? 'YES' : 'NO');
-    console.log('videoUrl value:', videoUrl);
     
     if (srcData.subtitles?.length) {
       subtitles = srcData.subtitles.map((st, i) => ({
@@ -879,11 +800,6 @@ async function startPlayback(source, quality) {
     playerNotReady.classList.remove('hidden');
     notReadyMsg.textContent = 'No video source available';
     return;
-  }
-
-  // Use video proxy to avoid CORS
-  if (url.startsWith('http')) {
-    url = '/video-proxy/' + encodeURIComponent(url);
   }
 
   let title = pendingItem?.title || 'Now Playing';

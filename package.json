@@ -1,20 +1,23 @@
 {
   "name": "zynrest",
   "version": "1.0.0",
-  "description": "ZYNREST - Premium Pinterest-style image gallery with search and download",
-  "main": "index.html",
+  "description": "ZYNREST - Premium Zynrest-style image gallery with search and download",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "live-server --port=8000 --host=localhost --open=/",
-    "build": "node sync-web.js",
-    "serve": "npm run start"
+    "dev": "node server.js",
+    "build": "echo 'No build step required for static app'",
+    "serve": "npm run start",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:electron": "npx cap open @capacitor-community/electron",
+    "cap:copy": "npx cap copy",
+    "cap:build:android": "npm run cap:copy && npm run cap:sync && npx cap open android",
+    "cap:build:ios": "npm run cap:copy && npm run cap:sync && npx cap open ios",
+    "cap:build:electron": "npm run cap:copy && npm run cap:sync && npx cap open @capacitor-community/electron"
   },
-  "keywords": [
-    "pwa",
-    "image-gallery",
-    "pinterest-clone",
-    "zynrest"
-  ],
+  "keywords": ["pwa", "image-gallery", "pinterest-clone", "zynrest"],
   "author": "ZYNREST Team",
   "license": "MIT",
   "devDependencies": {
@@ -25,15 +28,5 @@
     "type": "git",
     "url": "https://github.com/yourusername/zynrest.git"
   },
-  "homepage": "https://zynrest.app",
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "@capacitor-community/electron": "^5.0.1",
-    "@capacitor/android": "^8.3.0",
-    "@capacitor/cli": "^8.3.0",
-    "@capacitor/core": "^8.3.0",
-    "@capacitor/ios": "^8.3.0"
-  }
+  "homepage": "https://zynrest.app"
 }

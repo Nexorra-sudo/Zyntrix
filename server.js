@@ -2,11 +2,20 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
+const https = require('https');
 
 const host = '0.0.0.0';
-const PORT = process.env.PORT || 3000;
-const publicDir = __dirname;
+const PORT = process.env.PORT || 8000;
+const publicDir = path.join(__dirname, 'www');
 const VERSION = Date.now();
+
+const CV_API = 'https://moviebox.davidcyril.name.ng/api';
+const CV_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
+  'Referer': 'https://cineverse.name.ng/',
+  'Origin': 'https://cineverse.name.ng',
+  'Accept': 'application/json'
+};
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -45,7 +54,8 @@ function getCacheControl(filePath) {
 function safePath(urlPath) {
   const decoded = decodeURIComponent(urlPath.split('?')[0]);
   const normalized = path.normalize(decoded).replace(/^(\.\.[/\\])+/, '');
-  return normalized === path.sep ? '/index.html' : normalized;
+  if (normalized === '.' || normalized === path.sep) return 'index.html';
+  return normalized.replace(/^[/\\]+/, '');
 }
 
 function resolveFile(urlPath) {
@@ -92,6 +102,79 @@ const server = http.createServer((req, res) => {
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
     res.end(JSON.stringify({ status: 'ok', version: VERSION }));
+    return;
+  }
+
+  // Proxy for Cineverse API to avoid CORS
+  if (requestUrl.pathname.startsWith('/api/cv/')) {
+    const apiPath = requestUrl.pathname.replace('/api/cv/', '');
+    const targetUrl = `${CV_API}/${apiPath}${requestUrl.search}`;
+    
+    const proxyReq = https.request(targetUrl, { method: 'GET', headers: CV_HEADERS }, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', chunk => data += chunk);
+      proxyRes.on('end', () => {
+        res.writeHead(proxyRes.statusCode, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(data);
+      });
+    });
+    
+    proxyReq.on('error', (e) => {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: e.message }));
+    });
+    
+    proxyReq.end();
+    return;
+  }
+
+  // Proxy for video streaming to avoid CORS
+  if (requestUrl.pathname.startsWith('/video-proxy/')) {
+    const videoUrl = decodeURIComponent(requestUrl.pathname.replace('/video-proxy/', ''));
+    const range = req.headers.range;
+    
+    const proxyOptions = {
+      method: 'GET',
+      headers: {
+        ...CV_HEADERS,
+        'Accept': 'video/*,*/*',
+        'Connection': 'keep-alive'
+      }
+    };
+    
+    if (range) {
+      proxyOptions.headers['Range'] = range;
+    }
+    
+    const proxyReq = https.request(videoUrl, proxyOptions, (proxyRes) => {
+      const contentType = proxyRes.headers['content-type'] || 'video/mp4';
+      const headers = {
+        'Content-Type': contentType,
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Range',
+        'Accept-Ranges': proxyRes.headers['accept-ranges'] || 'bytes'
+      };
+      
+      if (proxyRes.headers['content-length']) {
+        headers['Content-Length'] = proxyRes.headers['content-length'];
+      }
+      if (proxyRes.headers['content-range']) {
+        headers['Content-Range'] = proxyRes.headers['content-range'];
+      }
+      
+      res.writeHead(proxyRes.statusCode, headers);
+      proxyRes.pipe(res);
+    });
+    
+    proxyReq.on('error', (e) => {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Video proxy error: ' + e.message);
+    });
+    
+    proxyReq.end();
     return;
   }
 
