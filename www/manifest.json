@@ -1,0 +1,20 @@
+{
+  "name": "ZYNIFLIX",
+  "short_name": "ZYNIFLIX",
+  "description": "Stream movies and TV shows in cinematic style.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#e50914",
+  "orientation": "any",
+  "categories": ["entertainment"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}
