@@ -26,9 +26,13 @@ let activeSubLang = '';
 let currentQuality = 'auto';
 let currentPlaybackSpeed = 1;
 let controlsHideTimer = null;
+let hasInitialized = false;
 let allMovies = [];
 let allSeries = [];
 let allTrending = [];
+let autoplayTimer = null;
+let autoplayCountdown = 5;
+let nextEpisodeData = null;
 
 // ===== DOM =====
 const $ = id => document.getElementById(id);
@@ -71,6 +75,9 @@ const subtitleMenu = $('subtitleMenu');
 const subtitleLabel = $('subtitleLabel');
 const settingsMenu = $('settingsMenu');
 const settingsBtn = $('playerSettingsBtn');
+const fullscreenBtn = $('fullscreenBtn');
+const fullscreenIcon = $('fullscreenIcon');
+const fullscreenLabel = $('fullscreenLabel');
 const speedOptions = $('speedOptions');
 const qualityMenuOptions = $('qualityMenuOptions');
 const playPauseBtn = $('playPauseBtn');
@@ -106,6 +113,12 @@ const installDismiss = $('installDismiss');
 const castGrid = $('castGrid');
 const modalAddList = $('modalAddList');
 const modalDownload = $('modalDownload');
+const autoplayModal = $('autoplayModal');
+const autoplayTitle = $('autoplayTitle');
+const autoplayProgress = $('autoplayProgress');
+const autoplaySeconds = $('autoplaySeconds');
+const autoplayPlayBtn = $('autoplayPlayBtn');
+const autoplayCancelBtn = $('autoplayCancelBtn');
 
 // ===== UTILS =====
 function getYear(d) { return d ? d.split('-')[0] : ''; }
@@ -253,8 +266,11 @@ function backdropUrl(item) {
 
 // ===== INIT =====
 playIntro = function() {
-  intro.style.display = 'none';
-  app.style.display = 'block';
+  if (intro) {
+    intro.classList.add('fade-out');
+    setTimeout(() => { intro.style.display = 'none'; }, 600);
+  }
+  if (app) app.style.display = 'block';
   init().catch(() => {});
 }
 
@@ -434,19 +450,23 @@ async function loadHome() {
     const trending = await cvPopular();
     allTrending = trending;
     const top10 = trending.slice(0, 10);
+    const popularSeriesBase = trending.filter(t => t.subjectType === 2);
 
     const continueList = continueWatching.filter(c => {
       const item = trending.find(t => String(t.subjectId || t.id) === String(c.id));
       return item && c.progress > 0 && c.progress < 95;
     });
 
-    const actionResults = await cvSearch('action');
+    const popularSeriesResults = popularSeriesBase.length ? popularSeriesBase : await cvSearch('popular series');
+    const trendingResults = trending;
+    const dramaResults = await cvSearch('drama');
+    const nollywoodResults = await cvSearch('nollywood');
     const horrorResults = await cvSearch('horror');
+    const actionResults = await cvSearch('action');
     const comedyResults = await cvSearch('comedy');
     const romanceResults = await cvSearch('romance');
     const scifiResults = await cvSearch('sci-fi');
     const thrillerResults = await cvSearch('thriller');
-    const dramaResults = await cvSearch('drama');
     const animationResults = await cvSearch('animation');
     const adventureResults = await cvSearch('adventure');
     const crimeResults = await cvSearch('crime');
@@ -455,15 +475,17 @@ async function loadHome() {
 
     const rows = [];
     if (continueList.length) rows.push({ title: 'Continue Watching', items: continueList, isContinue: true });
+    if (popularSeriesResults.length) rows.push({ title: 'Popular Series', items: popularSeriesResults });
+    if (trendingResults.length) rows.push({ title: 'Trending Now', items: trendingResults });
+    if (dramaResults.length) rows.push({ title: 'Drama', items: dramaResults });
+    if (nollywoodResults.length) rows.push({ title: 'Nollywood', items: nollywoodResults });
+    if (horrorResults.length) rows.push({ title: 'Horror', items: horrorResults });
     if (top10.length) rows.push({ title: 'Top 10 Movies', items: top10, isTop10: true });
-    if (trending.length) rows.push({ title: 'Trending Now', items: trending });
     if (actionResults.length) rows.push({ title: 'Action Movies', items: actionResults });
     if (scifiResults.length) rows.push({ title: 'Sci-Fi & Fantasy', items: scifiResults });
     if (thrillerResults.length) rows.push({ title: 'Thrillers', items: thrillerResults });
-    if (horrorResults.length) rows.push({ title: 'Horror', items: horrorResults });
     if (comedyResults.length) rows.push({ title: 'Comedy', items: comedyResults });
     if (romanceResults.length) rows.push({ title: 'Romance', items: romanceResults });
-    if (dramaResults.length) rows.push({ title: 'Drama', items: dramaResults });
     if (adventureResults.length) rows.push({ title: 'Adventure', items: adventureResults });
     if (crimeResults.length) rows.push({ title: 'Crime', items: crimeResults });
     if (animationResults.length) rows.push({ title: 'Animation', items: animationResults });
@@ -818,17 +840,17 @@ async function fetchSource(id, type) {
   if (srcData) {
     if (srcData.processedSources?.[0]) {
       const ps = srcData.processedSources[0];
-      videoUrl = ps.streamUrl || ps.directUrl || ps.downloadUrl;
+      videoUrl = ps.directUrl || ps.streamUrl || ps.downloadUrl;
       qualities = srcData.processedSources.map(s => ({
         quality: s.quality || 'Auto',
-        url: s.streamUrl || s.directUrl || s.downloadUrl,
-        downloadUrl: s.downloadUrl || s.streamUrl || s.directUrl
+        url: s.directUrl || s.streamUrl || s.downloadUrl,
+        downloadUrl: s.downloadUrl || s.directUrl || s.streamUrl
       }));
     } else if (srcData.downloads?.[0]) {
       const dl = srcData.downloads[0];
       videoUrl = dl.url;
       qualities = srcData.downloads.map(d => ({
-        quality: d.quality || d.label || 'Auto',
+        quality: d.quality || d.label || d.resolution || 'Auto',
         url: d.url || d.downloadUrl,
         downloadUrl: d.downloadUrl || d.url
       }));
@@ -891,7 +913,7 @@ function renderQualityOptions(source) {
         if (downloadsPage && !downloadsPage.classList.contains('hidden')) renderDownloads();
         return saved;
       }
-      closeQualityPicker();
+      closeQualityPicker(false);
       if (!fetchedSource?.videoUrl) {
         playerOverlay.classList.remove('hidden');
         playerNotReady.classList.remove('hidden');
@@ -903,16 +925,20 @@ function renderQualityOptions(source) {
   });
 }
 
-function closeQualityPicker() {
+function closeQualityPicker(clearSelection = true) {
   qualityOverlay.classList.add('hidden');
   qualityLoading.classList.add('hidden');
   qualityOptions.classList.remove('hidden');
-  pendingId = null;
-  isDownloadMode = false;
+  if (clearSelection) {
+    pendingId = null;
+    pendingType = null;
+    fetchedSource = null;
+    isDownloadMode = false;
+  }
 }
 
-qualityClose?.addEventListener('click', closeQualityPicker);
-qualityOverlay?.addEventListener('click', e => { if (e.target === qualityOverlay) closeQualityPicker(); });
+qualityClose?.addEventListener('click', () => closeQualityPicker(true));
+qualityOverlay?.addEventListener('click', e => { if (e.target === qualityOverlay) closeQualityPicker(true); });
 
 async function startPlayback(source, quality) {
   playerOverlay.classList.remove('hidden');
@@ -928,7 +954,7 @@ async function startPlayback(source, quality) {
       const l = (sq.quality || sq.label || sq.resolution || '').toLowerCase();
       return l.includes(String(q));
     });
-    if (m) url = m.url || m.downloadUrl || m.directUrl || url;
+    if (m) url = m.url || m.directUrl || m.downloadUrl || url;
   }
 
   if (!url) {
@@ -948,6 +974,7 @@ async function startPlayback(source, quality) {
   videoPlayer.load();
   setupSubs();
   renderPlayerSettings(source);
+  updateFullscreenButton();
   resetControlsTimer();
   updatePlayPauseIcon();
 
@@ -961,6 +988,13 @@ function setupSubs() {
   off.className = 'subtitle-option' + (activeSubLang === '' ? ' active' : '');
   off.textContent = 'Off'; off.onclick = () => selectSub('');
   subtitleMenu.appendChild(off);
+  if (!currentSubtitles.length) {
+    const empty = document.createElement('button');
+    empty.className = 'subtitle-option';
+    empty.textContent = 'No subtitles available';
+    empty.disabled = true;
+    subtitleMenu.appendChild(empty);
+  }
   currentSubtitles.forEach(sub => {
     const b = document.createElement('button');
     b.className = 'subtitle-option' + (activeSubLang === sub.language ? ' active' : '');
@@ -1003,6 +1037,71 @@ function closePlayer() {
   settingsMenu?.classList.add('hidden');
   if (playerControls) playerControls.classList.remove('hidden-ui');
   if (playerTopBar) playerTopBar.classList.remove('hidden-ui');
+  cancelAutoplay();
+}
+
+function showAutoplayModal(title, nextData) {
+  nextEpisodeData = nextData;
+  autoplayCountdown = 5;
+  if (autoplayTitle) autoplayTitle.textContent = title;
+  if (autoplaySeconds) autoplaySeconds.textContent = '5';
+  if (autoplayProgress) {
+    autoplayProgress.style.animation = 'none';
+    autoplayProgress.offsetHeight;
+    autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
+  }
+  autoplayModal.classList.remove('hidden');
+  
+  clearInterval(autoplayTimer);
+  autoplayTimer = setInterval(() => {
+    autoplayCountdown--;
+    if (autoplaySeconds) autoplaySeconds.textContent = String(autoplayCountdown);
+    if (autoplayCountdown <= 0) {
+      clearInterval(autoplayTimer);
+      playNextEpisode();
+    }
+  }, 1000);
+}
+
+function cancelAutoplay() {
+  clearInterval(autoplayTimer);
+  autoplayTimer = null;
+  nextEpisodeData = null;
+  autoplayModal.classList.add('hidden');
+}
+
+function playNextEpisode() {
+  if (!nextEpisodeData) return;
+  const { id, season, episode } = nextEpisodeData;
+  currentSeason = season;
+  currentEpisode = episode;
+  cancelAutoplay();
+  showQualityPicker(id, 'tv', currentMovie);
+}
+
+function updateFullscreenButton() {
+  const isFullscreen = document.fullscreenElement === playerOverlay || document.webkitFullscreenElement === playerOverlay;
+  if (fullscreenLabel) fullscreenLabel.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+  if (fullscreenIcon) {
+    fullscreenIcon.innerHTML = isFullscreen
+      ? '<polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line>'
+      : '<polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>';
+  }
+}
+
+async function toggleFullscreenMode() {
+  try {
+    const isFullscreen = document.fullscreenElement === playerOverlay || document.webkitFullscreenElement === playerOverlay;
+    if (isFullscreen) {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } else if (playerOverlay) {
+      if (playerOverlay.requestFullscreen) await playerOverlay.requestFullscreen();
+      else if (playerOverlay.webkitRequestFullscreen) playerOverlay.webkitRequestFullscreen();
+    }
+  } catch {}
+  updateFullscreenButton();
+  resetControlsTimer();
 }
 
 function updatePlayPauseIcon() {
@@ -1038,9 +1137,15 @@ function renderPlayerSettings(source) {
         const nextQuality = btn.dataset.playerQuality || 'auto';
         const currentTime = videoPlayer.currentTime || 0;
         const paused = videoPlayer.paused;
+        const previousSub = activeSubLang;
         await startPlayback(source, nextQuality);
-        videoPlayer.currentTime = currentTime;
-        if (paused) videoPlayer.pause();
+        const restore = () => {
+          videoPlayer.currentTime = currentTime;
+          if (previousSub) selectSub(previousSub);
+          if (paused) videoPlayer.pause();
+          videoPlayer.removeEventListener('loadedmetadata', restore);
+        };
+        videoPlayer.addEventListener('loadedmetadata', restore);
       };
     });
   }
@@ -1215,6 +1320,15 @@ videoPlayer?.addEventListener('loadedmetadata', () => {
   if (durationTimeEl) durationTimeEl.textContent = formatTime(videoPlayer.duration);
   if (currentTimeEl) currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
 });
+videoPlayer?.addEventListener('ended', () => {
+  if (pendingType === 'tv') {
+    const nextEp = currentEpisode + 1;
+    const title = `Playing ${pendingItem?.title || 'Episode'} Season ${currentSeason} Episode ${nextEp}`;
+    showAutoplayModal(title, { id: pendingId, season: currentSeason, episode: nextEp });
+  }
+});
+autoplayPlayBtn?.addEventListener('click', playNextEpisode);
+autoplayCancelBtn?.addEventListener('click', cancelAutoplay);
 playPauseBtn?.addEventListener('click', () => {
   if (videoPlayer.paused) videoPlayer.play().catch(() => {});
   else videoPlayer.pause();
@@ -1242,10 +1356,18 @@ settingsBtn?.addEventListener('click', () => {
   settingsMenu?.classList.toggle('hidden');
   resetControlsTimer();
 });
+fullscreenBtn?.addEventListener('click', () => {
+  toggleFullscreenMode();
+});
 playerOverlay?.addEventListener('mousemove', resetControlsTimer);
+playerOverlay?.addEventListener('touchstart', resetControlsTimer, { passive: true });
+playerOverlay?.addEventListener('pointermove', resetControlsTimer);
 playerOverlay?.addEventListener('click', e => {
   if (e.target === playerOverlay || e.target === videoPlayer) resetControlsTimer();
 });
+playerOverlay?.addEventListener('keydown', resetControlsTimer);
+document.addEventListener('fullscreenchange', updateFullscreenButton);
+document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
 document.addEventListener('click', e => {
   if (!e.target.closest('.player-control') && !e.target.closest('.player-menu')) {
     subtitleMenu?.classList.add('hidden');
@@ -1271,10 +1393,17 @@ if ('serviceWorker' in navigator) {
 
 // ===== INIT =====
 async function init() {
+  if (hasInitialized) return;
+  hasInitialized = true;
   renderDownloads();
   try { await loadHero(); } catch {}
   try { await loadHome(); } catch {}
 }
 
 // Auto-start
-init().catch(() => {});
+if (intro) {
+  setTimeout(() => playIntro(), 2200);
+} else {
+  if (app) app.style.display = 'block';
+  init().catch(() => {});
+}

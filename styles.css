@@ -45,6 +45,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 ul { list-style: none; }
 img { display: block; max-width: 100%; }
 .hidden { display: none !important; }
+.app { display: none; }
 
 /* ============================================
    INTRO ANIMATION (Netflix-style)
@@ -1387,6 +1388,140 @@ img { display: block; max-width: 100%; }
 .not-ready-content p {
   font-size: 1.1rem;
   margin-bottom: 20px;
+}
+
+/* Autoplay Next Episode Modal */
+.autoplay-modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.autoplay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.autoplay-container {
+  position: relative;
+  width: 340px;
+  max-width: 90vw;
+}
+
+.autoplay-glow {
+  position: absolute;
+  inset: -3px;
+  background: radial-gradient(ellipse at center, rgba(229, 9, 20, 0.4) 0%, transparent 70%);
+  border-radius: 16px;
+  animation: autoplayGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes autoplayGlow {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+.autoplay-content {
+  position: relative;
+  background: linear-gradient(145deg, rgba(30, 30, 30, 0.95), rgba(20, 20, 20, 0.98));
+  border: 1px solid rgba(229, 9, 20, 0.3);
+  border-radius: 12px;
+  padding: 28px 24px;
+  text-align: center;
+}
+
+.autoplay-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.autoplay-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.autoplay-countdown {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.autoplay-progress {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) 0deg, rgba(255,255,255,0.1) 0deg);
+  animation: countdownSpin 5s linear forwards;
+}
+
+@keyframes countdownSpin {
+  from { background: conic-gradient(var(--accent) 0deg, rgba(255,255,255,0.1) 0deg); }
+  to { background: conic-gradient(var(--accent) 360deg, rgba(255,255,255,0.1) 360deg); }
+}
+
+.autoplay-progress::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  background: rgba(20, 20, 20, 0.95);
+  border-radius: 50%;
+}
+
+.autoplay-seconds {
+  position: relative;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.autoplay-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.autoplay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.autoplay-play {
+  background: var(--accent);
+  color: #fff;
+}
+
+.autoplay-play:hover {
+  background: var(--accent-hover);
+  transform: scale(1.02);
+}
+
+.autoplay-cancel {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+
+.autoplay-cancel:hover {
+  background: rgba(255,255,255,0.2);
 }
 
 /* Loading Spinner */
