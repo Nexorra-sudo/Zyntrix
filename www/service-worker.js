@@ -11,15 +11,6 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
-  if (
-    url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/video-proxy/') ||
-    e.request.headers.has('range') ||
-    e.request.destination === 'video' ||
-    e.request.destination === 'audio'
-  ) {
-    return;
-  }
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).catch(() => caches.match('/index.html')));
     return;

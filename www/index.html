@@ -10,32 +10,15 @@
   <meta http-equiv="Expires" content="0">
   <title>ZYNIFLIX</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/svg+xml" href="icon.svg">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
-  <div class="intro" id="intro">
-    <div class="intro-content" aria-label="ZYNIFLIX intro">
-      <div class="intro-letters">
-        <span class="intro-letter" data-letter="Z">Z</span>
-        <span class="intro-letter" data-letter="Y">Y</span>
-        <span class="intro-letter" data-letter="N">N</span>
-        <span class="intro-letter" data-letter="I">I</span>
-        <span class="intro-letter" data-letter="F">F</span>
-        <span class="intro-letter" data-letter="L">L</span>
-        <span class="intro-letter" data-letter="I">I</span>
-        <span class="intro-letter" data-letter="X">X</span>
-      </div>
-      <div class="intro-loader-bar"></div>
-    </div>
-  </div>
-
   <!-- Main App -->
-  <div class="app hidden" id="app">
+  <div class="app" id="app">
     <!-- Netflix-style Navbar -->
     <nav class="navbar" id="navbar">
       <div class="navbar-left">
@@ -45,7 +28,7 @@
           <li><a href="#" class="nav-link" data-category="tv">TV Shows</a></li>
           <li><a href="#" class="nav-link" data-category="movies">Movies</a></li>
           <li><a href="#" class="nav-link" data-category="new">New & Popular</a></li>
-          <li><a href="#" class="nav-link" data-category="mylist">My List</a></li>
+          <li><a href="#" class="nav-link" data-category="downloads">Downloads</a></li>
         </ul>
       </div>
       <div class="navbar-right">
@@ -61,7 +44,7 @@
         </div>
         <button class="install-btn hidden" id="installBtn" aria-label="Install" style="display:none;"></button>
         <div class="profile-icon">
-          <img src="https://occ-0-2611-3663.1.nflxso.net/dnm/api/v6/vN7bi_My87NPKvsBoib006Llxzg/AAAABXYofKzCs2BS29qo1ELF7g0KRDm0jmAic3qTTfeCq7_6sVWqzDK8cNzFp3Vc1gPJnM2vL7z9j5MZ8G4y8pE0U5vPL4Yx.png?r=a41" alt="Profile" class="profile-avatar">
+          <div class="profile-avatar profile-avatar-fallback" aria-hidden="true">Z</div>
         </div>
       </div>
     </nav>
@@ -168,13 +151,47 @@
           </button>
           <span class="player-title" id="playerTitle"></span>
         </div>
-        <video id="videoPlayer" controls playsinline webkit-playsinline preload="auto" class="video-player"></video>
-        <div class="player-subtitle-controls hidden" id="subtitleControls">
-          <button class="subtitle-btn" id="subtitleBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 12h2"/><path d="M11 12h6"/><path d="M7 16h10"/></svg>
-            <span id="subtitleLabel">Off</span>
-          </button>
-          <div class="subtitle-menu hidden" id="subtitleMenu"></div>
+        <video id="videoPlayer" playsinline webkit-playsinline preload="auto" class="video-player"></video>
+        <div class="player-controls" id="playerControls">
+          <div class="player-center-controls">
+            <button class="player-control player-seek" id="rewindBtn" aria-label="Rewind 10 seconds">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+            </button>
+            <button class="player-control player-play-main" id="playPauseBtn" aria-label="Play or pause">
+              <svg id="playPauseIcon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>
+            </button>
+            <button class="player-control player-seek" id="forwardBtn" aria-label="Forward 10 seconds">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+            </button>
+          </div>
+          <div class="player-bottom-controls">
+            <div class="player-progress-wrap">
+              <span class="player-time" id="currentTime">0:00</span>
+              <input type="range" id="playerSeek" class="player-seekbar" min="0" max="100" value="0">
+              <span class="player-time" id="durationTime">0:00</span>
+            </div>
+            <div class="player-action-row">
+              <button class="player-control" id="playerSubtitleBtn" aria-label="Subtitles">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M7 12h2"></path><path d="M11 12h6"></path><path d="M7 16h10"></path></svg>
+                <span id="subtitleLabel">Off</span>
+              </button>
+              <button class="player-control" id="playerSettingsBtn" aria-label="Player settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+                <span>Settings</span>
+              </button>
+            </div>
+          </div>
+          <div class="player-menu hidden" id="subtitleMenu"></div>
+          <div class="player-menu hidden player-settings-menu" id="settingsMenu">
+            <div class="player-settings-group">
+              <p class="player-settings-title">Playback speed</p>
+              <div class="player-settings-options" id="speedOptions"></div>
+            </div>
+            <div class="player-settings-group">
+              <p class="player-settings-title">Quality</p>
+              <div class="player-settings-options" id="qualityMenuOptions"></div>
+            </div>
+          </div>
         </div>
         <div class="player-not-ready hidden" id="playerNotReady">
           <div class="not-ready-content">
@@ -189,7 +206,7 @@
     <div class="quality-overlay hidden" id="qualityOverlay">
       <div class="quality-modal">
         <button class="quality-close" id="qualityClose">&times;</button>
-        <h3 class="quality-title" id="qualityTitle">Choose Streaming Quality</h3>
+        <h3 class="quality-title">Choose Streaming Quality</h3>
         <p class="quality-subtitle" id="qualityMovieName"></p>
         <div class="quality-options" id="qualityOptions">
           <button class="quality-btn" data-quality="360">
@@ -221,7 +238,6 @@
             <span class="quality-badge">FHD</span>
           </button>
         </div>
-        <button class="quality-confirm-btn" id="qualityConfirmBtn">Stream Now</button>
         <div class="quality-loading hidden" id="qualityLoading">
           <div class="loading-spinner"></div>
           <p>Fetching stream...</p>
@@ -238,10 +254,9 @@
     <div class="install-prompt hidden" id="installPrompt">
       <div class="install-prompt-icon">Z</div>
       <div class="install-prompt-text">
-        <span class="install-prompt-title">Install</span>
-        <span class="install-prompt-sub">Tap to install ZYNIFLIX now</span>
+        <span class="install-prompt-title">Install ZYNIFLIX</span>
+        <span class="install-prompt-sub">Add to Home Screen for the best experience</span>
       </div>
-      <button class="install-action" id="installAction">Install</button>
       <button class="install-dismiss" id="installDismiss">&times;</button>
     </div>
 
@@ -259,9 +274,9 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <span>Search</span>
       </button>
-      <button class="bottom-nav-item" data-nav="mylist">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-        <span>My List</span>
+      <button class="bottom-nav-item" data-nav="downloads">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Downloads</span>
       </button>
     </nav>
 
@@ -293,10 +308,13 @@
         <h2>My Downloads</h2>
       </div>
       <div class="downloads-body">
-        <div class="downloads-empty">
+        <p class="downloads-note" id="downloadsNote">Downloaded titles can be reopened here. On web they still stream online and do not play fully offline.</p>
+        <div class="downloads-grid" id="downloadsGrid">
+          <div class="downloads-empty">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <p>No downloads yet</p>
           <span>Downloaded movies and shows will appear here</span>
+        </div>
         </div>
       </div>
     </div>
@@ -305,5 +323,3 @@
   <script src="app.js?v=2"></script>
 </body>
 </html>
-
-
