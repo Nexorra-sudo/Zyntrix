@@ -28,7 +28,7 @@
           <li><a href="#" class="nav-link" data-category="tv">TV Shows</a></li>
           <li><a href="#" class="nav-link" data-category="movies">Movies</a></li>
           <li><a href="#" class="nav-link" data-category="new">New & Popular</a></li>
-          <li><a href="#" class="nav-link" data-category="mylist">My List</a></li>
+          <li><a href="#" class="nav-link" data-category="downloads">Downloads</a></li>
         </ul>
       </div>
       <div class="navbar-right">
@@ -44,7 +44,7 @@
         </div>
         <button class="install-btn hidden" id="installBtn" aria-label="Install" style="display:none;"></button>
         <div class="profile-icon">
-          <img src="https://occ-0-2611-3663.1.nflxso.net/dnm/api/v6/vN7bi_My87NPKvsBoib006Llxzg/AAAABXYofKzCs2BS29qo1ELF7g0KRDm0jmAic3qTTfeCq7_6sVWqzDK8cNzFp3Vc1gPJnM2vL7z9j5MZ8G4y8pE0U5vPL4Yx.png?r=a41" alt="Profile" class="profile-avatar">
+          <div class="profile-avatar profile-avatar-fallback" aria-hidden="true">Z</div>
         </div>
       </div>
     </nav>
@@ -151,13 +151,47 @@
           </button>
           <span class="player-title" id="playerTitle"></span>
         </div>
-        <video id="videoPlayer" controls playsinline webkit-playsinline preload="auto" class="video-player"></video>
-        <div class="player-subtitle-controls hidden" id="subtitleControls">
-          <button class="subtitle-btn" id="subtitleBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 12h2"/><path d="M11 12h6"/><path d="M7 16h10"/></svg>
-            <span id="subtitleLabel">Off</span>
-          </button>
-          <div class="subtitle-menu hidden" id="subtitleMenu"></div>
+        <video id="videoPlayer" playsinline webkit-playsinline preload="auto" class="video-player"></video>
+        <div class="player-controls" id="playerControls">
+          <div class="player-center-controls">
+            <button class="player-control player-seek" id="rewindBtn" aria-label="Rewind 10 seconds">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+            </button>
+            <button class="player-control player-play-main" id="playPauseBtn" aria-label="Play or pause">
+              <svg id="playPauseIcon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>
+            </button>
+            <button class="player-control player-seek" id="forwardBtn" aria-label="Forward 10 seconds">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+            </button>
+          </div>
+          <div class="player-bottom-controls">
+            <div class="player-progress-wrap">
+              <span class="player-time" id="currentTime">0:00</span>
+              <input type="range" id="playerSeek" class="player-seekbar" min="0" max="100" value="0">
+              <span class="player-time" id="durationTime">0:00</span>
+            </div>
+            <div class="player-action-row">
+              <button class="player-control" id="playerSubtitleBtn" aria-label="Subtitles">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M7 12h2"></path><path d="M11 12h6"></path><path d="M7 16h10"></path></svg>
+                <span id="subtitleLabel">Off</span>
+              </button>
+              <button class="player-control" id="playerSettingsBtn" aria-label="Player settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+                <span>Settings</span>
+              </button>
+            </div>
+          </div>
+          <div class="player-menu hidden" id="subtitleMenu"></div>
+          <div class="player-menu hidden player-settings-menu" id="settingsMenu">
+            <div class="player-settings-group">
+              <p class="player-settings-title">Playback speed</p>
+              <div class="player-settings-options" id="speedOptions"></div>
+            </div>
+            <div class="player-settings-group">
+              <p class="player-settings-title">Quality</p>
+              <div class="player-settings-options" id="qualityMenuOptions"></div>
+            </div>
+          </div>
         </div>
         <div class="player-not-ready hidden" id="playerNotReady">
           <div class="not-ready-content">
@@ -240,9 +274,9 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <span>Search</span>
       </button>
-      <button class="bottom-nav-item" data-nav="mylist">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-        <span>My List</span>
+      <button class="bottom-nav-item" data-nav="downloads">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Downloads</span>
       </button>
     </nav>
 
@@ -274,10 +308,13 @@
         <h2>My Downloads</h2>
       </div>
       <div class="downloads-body">
-        <div class="downloads-empty">
+        <p class="downloads-note" id="downloadsNote">Downloaded titles can be reopened here. On web they still stream online and do not play fully offline.</p>
+        <div class="downloads-grid" id="downloadsGrid">
+          <div class="downloads-empty">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <p>No downloads yet</p>
           <span>Downloaded movies and shows will appear here</span>
+        </div>
         </div>
       </div>
     </div>

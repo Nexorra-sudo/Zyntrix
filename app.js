@@ -3,16 +3,12 @@
    ============================================ */
 
 // ===== CONFIG =====
-const Cineverse_API = 'https://moviebox.davidcyril.name.ng/api';
-const Cineverse_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
-  'Referer': 'https://cineverse.name.ng/',
-  'Origin': 'https://cineverse.name.ng',
-  'Accept': 'application/json'
-};
+const CV_API = '/api/cv';
+const CV_HEADERS = { 'Accept': 'application/json' };
 const MYLIST_KEY = 'zynflix-list-v2';
 const INTRO_KEY = 'zynflix-intro';
 const SEARCH_KEY = 'zynflix-search-v1';
+const DOWNLOADS_KEY = 'zynflix-downloads-v1';
 const VERSION = Date.now();
 
 // ===== STATE =====
@@ -27,6 +23,9 @@ let recentSearches = loadSearches();
 let playerActive = false;
 let currentSubtitles = [];
 let activeSubLang = '';
+let currentQuality = 'auto';
+let currentPlaybackSpeed = 1;
+let controlsHideTimer = null;
 let allMovies = [];
 let allSeries = [];
 let allTrending = [];
@@ -66,10 +65,22 @@ const playerOverlay = $('playerOverlay');
 const videoPlayer = $('videoPlayer');
 const playerBack = $('playerBack');
 const playerTitle = $('playerTitle');
-const subtitleBtn = $('subtitleBtn');
+const playerTopBar = document.querySelector('.player-top-bar');
+const subtitleBtn = $('playerSubtitleBtn');
 const subtitleMenu = $('subtitleMenu');
 const subtitleLabel = $('subtitleLabel');
-const subtitleControls = $('subtitleControls');
+const settingsMenu = $('settingsMenu');
+const settingsBtn = $('playerSettingsBtn');
+const speedOptions = $('speedOptions');
+const qualityMenuOptions = $('qualityMenuOptions');
+const playPauseBtn = $('playPauseBtn');
+const playPauseIcon = $('playPauseIcon');
+const rewindBtn = $('rewindBtn');
+const forwardBtn = $('forwardBtn');
+const playerSeek = $('playerSeek');
+const currentTimeEl = $('currentTime');
+const durationTimeEl = $('durationTime');
+const playerControls = $('playerControls');
 const playerNotReady = $('playerNotReady');
 const notReadyMsg = $('notReadyMsg');
 const qualityOverlay = $('qualityOverlay');
@@ -87,7 +98,9 @@ const recentSearchList = $('recentSearchList');
 const clearRecentSearches = $('clearRecentSearches');
 const searchOverlayResults = $('searchOverlayResults');
 const downloadsPage = $('downloadsPage');
-const mylistResults = $('mylistResults');
+const downloadsGrid = $('downloadsGrid');
+const downloadsNote = $('downloadsNote');
+const mylistResults = $('myListResults');
 const installPrompt = $('installPrompt');
 const installDismiss = $('installDismiss');
 const castGrid = $('castGrid');
@@ -107,6 +120,9 @@ const CONTINUE_KEY = 'zynflix-continue-v1';
 function loadContinueWatching() { try { return JSON.parse(localStorage.getItem(CONTINUE_KEY)) || []; } catch { return []; } }
 function saveContinueWatching(list) { try { localStorage.setItem(CONTINUE_KEY, JSON.stringify(list)); } catch {} }
 let continueWatching = loadContinueWatching();
+function loadDownloads() { try { return JSON.parse(localStorage.getItem(DOWNLOADS_KEY)) || []; } catch { return []; } }
+function saveDownloads() { try { localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads)); } catch {} }
+let downloads = loadDownloads();
 
 function updateContinueWatching(id, title, poster, type, progress, duration, season, episode) {
   continueWatching = continueWatching.filter(c => String(c.id) !== String(id));
@@ -119,6 +135,42 @@ function updateContinueWatching(id, title, poster, type, progress, duration, sea
 
 function getContinueProgress(id) {
   return continueWatching.find(c => String(c.id) === String(id));
+}
+
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  return hrs > 0
+    ? `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    : `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function proxiedVideoUrl(url) {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return `/video-proxy/${encodeURIComponent(url)}`;
+  return url;
+}
+
+function saveDownloadedItem(item, selectedQuality, url) {
+  const entry = {
+    key: [item.subjectId || item.id, item.subjectType === 2 ? 'tv' : 'movie', currentSeason, currentEpisode, selectedQuality].join(':'),
+    id: item.subjectId || item.id,
+    title: item.title || item.name || 'Unknown',
+    poster: item.poster || item.thumbnail || item.cover?.url || '',
+    type: item.subjectType === 2 || item.type === 'tv' ? 'tv' : 'movie',
+    quality: selectedQuality,
+    season: currentSeason,
+    episode: currentEpisode,
+    url: url || '',
+    addedAt: Date.now()
+  };
+  downloads = downloads.filter(d => d.key !== entry.key);
+  downloads.unshift(entry);
+  saveDownloads();
+  renderDownloads();
+  return entry;
 }
 
 function loadList() { try { return JSON.parse(localStorage.getItem(MYLIST_KEY)) || []; } catch { return []; } }
@@ -204,11 +256,6 @@ playIntro = function() {
   intro.style.display = 'none';
   app.style.display = 'block';
   init().catch(() => {});
-}
-
-async function init() {
-  try { await loadHero(); } catch {}
-  try { await loadHome(); } catch {}
 }
 
 // ===== HERO BANNER =====
@@ -436,16 +483,17 @@ async function loadHome() {
 async function loadCategory(cat) {
   stopHeroRotation();
   searchResults.classList.add('hidden');
-  mylistResults.classList.add('hidden');
+  if (mylistResults) mylistResults.classList.add('hidden');
   downloadsPage.classList.add('hidden');
   rowsContainer.style.display = '';
 
   document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === cat));
+  document.querySelectorAll('.nav-link').forEach(link => link.classList.toggle('active', link.dataset.category === cat));
 
   if (cat === 'home') { await loadHero(); await loadHome(); return; }
   if (cat === 'mylist') {
     rowsContainer.style.display = 'none';
-    mylistResults.classList.remove('hidden');
+    if (mylistResults) mylistResults.classList.remove('hidden');
     renderMyList();
     return;
   }
@@ -471,12 +519,14 @@ async function loadCategory(cat) {
   if (cat === 'downloads') {
     rowsContainer.style.display = 'none';
     downloadsPage.classList.remove('hidden');
+    renderDownloads();
     return;
   }
 }
 
 // ===== MY LIST =====
 function renderMyList() {
+  if (!mylistResults) return;
   if (!mylist.length) {
     mylistResults.innerHTML = '<h2>My List</h2><div class="no-results">Your list is empty. Tap + on any movie to add it here.</div>';
     return;
@@ -497,6 +547,66 @@ function renderMyList() {
       </div>
     </div>`).join('')}</div>`;
   bindCards(mylistResults);
+}
+
+function renderDownloads() {
+  if (!downloadsGrid) return;
+  if (downloadsNote) {
+    downloadsNote.textContent = 'Downloaded titles reopen here inside ZYNIFLIX. On web they still stream online, so full offline playback needs the native app build.';
+  }
+  if (!downloads.length) {
+    downloadsGrid.innerHTML = `
+      <div class="downloads-empty">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <p>No downloads yet</p>
+        <span>Downloaded movies and shows will appear here</span>
+      </div>`;
+    return;
+  }
+  downloadsGrid.innerHTML = `<div class="downloads-list">${downloads.map(d => `
+    <article class="download-card">
+      <div class="download-card-media">
+        <img src="${d.poster || ''}" alt="${d.title || 'Download'}" loading="lazy" onerror="this.style.background='#222'">
+      </div>
+      <div class="download-card-info">
+        <h3>${d.title || 'Unknown'}</h3>
+        <p>${d.type === 'tv' ? `Series • S${d.season || 1}E${d.episode || 1}` : 'Movie'} • ${d.quality || 'Auto'}</p>
+        <span>${new Date(d.addedAt || Date.now()).toLocaleDateString()}</span>
+      </div>
+      <div class="download-card-actions">
+        <button class="download-action primary" data-download-play="${d.key}">Watch</button>
+        <button class="download-action" data-download-open="${d.id}" data-download-type="${d.type || 'movie'}">Details</button>
+        <button class="download-action danger" data-download-remove="${d.key}">Remove</button>
+      </div>
+    </article>
+  `).join('')}</div>`;
+
+  downloadsGrid.querySelectorAll('[data-download-play]').forEach(btn => {
+    btn.onclick = async () => {
+      const item = downloads.find(d => d.key === btn.dataset.downloadPlay);
+      if (!item) return;
+      pendingItem = { subjectId: item.id, title: item.title, subjectType: item.type === 'tv' ? 2 : 1, poster: item.poster };
+      pendingId = item.id;
+      pendingType = item.type || 'movie';
+      currentSeason = item.season || 1;
+      currentEpisode = item.episode || 1;
+      if (item.url) {
+        await startPlayback({ videoUrl: item.url, subtitles: [], qualities: [{ quality: item.quality, url: item.url, downloadUrl: item.url }] }, item.quality || 'auto');
+      } else {
+        showQualityPicker(item.id, item.type || 'movie', pendingItem);
+      }
+    };
+  });
+  downloadsGrid.querySelectorAll('[data-download-open]').forEach(btn => {
+    btn.onclick = () => openModal(btn.dataset.downloadOpen, btn.dataset.downloadType || 'movie');
+  });
+  downloadsGrid.querySelectorAll('[data-download-remove]').forEach(btn => {
+    btn.onclick = () => {
+      downloads = downloads.filter(d => d.key !== btn.dataset.downloadRemove);
+      saveDownloads();
+      renderDownloads();
+    };
+  });
 }
 
 // ===== MOVIE MODAL =====
@@ -666,9 +776,14 @@ function showQualityPicker(id, type, item) {
   pendingId = id; pendingType = type; pendingItem = item; fetchedSource = null;
   qualityMovieName.textContent = item?.title || item?.name || 'Loading...';
   qualityOverlay.classList.remove('hidden');
-  qualityOptions.classList.remove('hidden');
-  qualityLoading.classList.add('hidden');
-  fetchSource(id, type);
+  qualityOptions.classList.add('hidden');
+  qualityLoading.classList.remove('hidden');
+  fetchSource(id, type).then(source => {
+    fetchedSource = source;
+    qualityLoading.classList.add('hidden');
+    qualityOptions.classList.remove('hidden');
+    renderQualityOptions(source);
+  });
 }
 
 function showDownloadPicker(id, type, item) {
@@ -676,30 +791,26 @@ function showDownloadPicker(id, type, item) {
   pendingId = id; pendingType = type; pendingItem = item; fetchedSource = null;
   qualityMovieName.textContent = `Download: ${item?.title || item?.name || 'Loading...'}`;
   qualityOverlay.classList.remove('hidden');
-  qualityOptions.classList.remove('hidden');
-  qualityLoading.classList.add('hidden');
-  fetchSource(id, type);
+  qualityOptions.classList.add('hidden');
+  qualityLoading.classList.remove('hidden');
+  fetchSource(id, type).then(source => {
+    fetchedSource = source;
+    qualityLoading.classList.add('hidden');
+    qualityOptions.classList.remove('hidden');
+    renderQualityOptions(source);
+  });
 }
 
 async function fetchSource(id, type) {
   const s = type === 'tv' ? currentSeason : 1;
   const e = type === 'tv' ? currentEpisode : 1;
-  
-  console.log('=== fetchSource ===', id, type);
-  
-  // Get info first (like movie.js)
-  const infoRes = await cvFetch(`${CV_API}/info/${id}`);
-  const meta = infoRes?.data?.subject || infoRes?.data;
-  console.log('info response:', meta ? 'got meta' : 'no meta');
-  
-  // Get sources
+
   let sourceUrl = `${CV_API}/sources/${id}`;
   if (type === 'tv') sourceUrl += `?season=${s}&episode=${e}`;
-  
+
   const srcRes = await cvFetch(sourceUrl);
   const srcData = srcRes?.data || srcRes;
-  console.log('sources response keys:', srcData ? Object.keys(srcData) : 'null');
-  
+
   let videoUrl = null;
   let subtitles = [];
   let qualities = [];
@@ -707,22 +818,24 @@ async function fetchSource(id, type) {
   if (srcData) {
     if (srcData.processedSources?.[0]) {
       const ps = srcData.processedSources[0];
-      videoUrl = ps.streamUrl || ps.directUrl;
+      videoUrl = ps.streamUrl || ps.directUrl || ps.downloadUrl;
       qualities = srcData.processedSources.map(s => ({
-        quality: s.quality,
-        url: s.streamUrl || s.directUrl,
-        downloadUrl: s.downloadUrl
+        quality: s.quality || 'Auto',
+        url: s.streamUrl || s.directUrl || s.downloadUrl,
+        downloadUrl: s.downloadUrl || s.streamUrl || s.directUrl
       }));
     } else if (srcData.downloads?.[0]) {
       const dl = srcData.downloads[0];
       videoUrl = dl.url;
-      qualities = srcData.downloads;
+      qualities = srcData.downloads.map(d => ({
+        quality: d.quality || d.label || 'Auto',
+        url: d.url || d.downloadUrl,
+        downloadUrl: d.downloadUrl || d.url
+      }));
     } else if (srcData.url) {
       videoUrl = srcData.url;
     }
-    
-    console.log('videoUrl found:', videoUrl ? 'YES' : 'NO');
-    
+
     if (srcData.subtitles?.length) {
       subtitles = srcData.subtitles.map((st, i) => ({
         label: st.label || st.language || `Sub ${i+1}`,
@@ -731,60 +844,82 @@ async function fetchSource(id, type) {
       }));
     }
   }
-  
+
   fetchedSource = { videoUrl, subtitles, qualities };
-  console.log('RETURN videoUrl:', videoUrl ? 'FOUND' : 'NULL');
   return fetchedSource;
 }
-   
-function closeQualityPicker() { qualityOverlay.classList.add('hidden'); pendingId = null; }
+
+function renderQualityOptions(source) {
+  const options = source?.qualities?.length ? source.qualities : (source?.videoUrl ? [{ quality: 'Auto', url: source.videoUrl, downloadUrl: source.videoUrl }] : []);
+  if (!options.length) {
+    qualityOptions.innerHTML = '<div class="no-results">This title is not available right now.</div>';
+    return;
+  }
+  qualityOptions.innerHTML = options.map((option, index) => {
+    const match = String(option.quality || '').match(/(\d{3,4})/);
+    const value = match ? match[1] : 'auto';
+    const label = match ? `${match[1]}p` : (option.quality || 'Auto');
+    const desc = match
+      ? (parseInt(match[1], 10) >= 1080 ? 'Full HD' : parseInt(match[1], 10) >= 720 ? 'High Definition' : 'Standard')
+      : 'Adaptive stream';
+    return `<button class="quality-btn ${index === 0 ? 'recommended' : ''}" data-quality="${value}">
+      <div class="quality-info">
+        <span class="quality-label">${label}</span>
+        <span class="quality-desc">${desc}</span>
+      </div>
+      <span class="quality-badge">${isDownloadMode ? 'Save' : 'Play'}</span>
+    </button>`;
+  }).join('');
+
+  qualityOptions.querySelectorAll('.quality-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const quality = btn.dataset.quality || 'auto';
+      if (!pendingId) return;
+      if (!fetchedSource?.videoUrl) await fetchSource(pendingId, pendingType);
+      if (isDownloadMode) {
+        const match = fetchedSource?.qualities?.find(q => String(q.quality || '').includes(quality)) || fetchedSource?.qualities?.[0];
+        const url = match?.downloadUrl || match?.url || fetchedSource?.videoUrl;
+        if (!url) {
+          alert('Download link not available.');
+          return;
+        }
+        const saved = saveDownloadedItem(pendingItem || {}, quality, url);
+        qualityOverlay.classList.add('hidden');
+        pendingId = null;
+        isDownloadMode = false;
+        window.open(url, '_blank');
+        if (downloadsPage && !downloadsPage.classList.contains('hidden')) renderDownloads();
+        return saved;
+      }
+      closeQualityPicker();
+      if (!fetchedSource?.videoUrl) {
+        playerOverlay.classList.remove('hidden');
+        playerNotReady.classList.remove('hidden');
+        notReadyMsg.textContent = 'This title is not available for streaming right now.';
+        return;
+      }
+      await startPlayback(fetchedSource, quality);
+    };
+  });
+}
+
+function closeQualityPicker() {
+  qualityOverlay.classList.add('hidden');
+  qualityLoading.classList.add('hidden');
+  qualityOptions.classList.remove('hidden');
+  pendingId = null;
+  isDownloadMode = false;
+}
 
 qualityClose?.addEventListener('click', closeQualityPicker);
 qualityOverlay?.addEventListener('click', e => { if (e.target === qualityOverlay) closeQualityPicker(); });
-
-qualityOptions?.querySelectorAll('.quality-btn').forEach(btn => {
-  btn.onclick = async () => {
-    const quality = btn.dataset.quality;
-    if (!pendingId) return;
-    qualityOptions.classList.add('hidden');
-    qualityLoading.classList.remove('hidden');
-    if (!fetchedSource?.videoUrl) await fetchSource(pendingId, pendingType);
-    
-    if (isDownloadMode) {
-      qualityOverlay.classList.add('hidden');
-      if (!fetchedSource?.videoUrl) {
-        alert('This title is not available for download right now.');
-        pendingId = null; isDownloadMode = false; return;
-      }
-      const url = fetchedSource.qualities?.length 
-        ? fetchedSource.qualities.find(q => (q.quality || q.label || '').toLowerCase().includes(quality))?.downloadUrl || fetchedSource.qualities[0]?.downloadUrl
-        : fetchedSource.videoUrl;
-      if (url) {
-        window.open(url, '_blank');
-      } else {
-        alert('Download link not available.');
-      }
-      pendingId = null; isDownloadMode = false;
-      return;
-    }
-    
-    closeQualityPicker();
-    if (!fetchedSource?.videoUrl) {
-      playerOverlay.classList.remove('hidden');
-      playerNotReady.classList.remove('hidden');
-      notReadyMsg.textContent = 'This title is not available for streaming right now.';
-      return;
-    }
-    await startPlayback(fetchedSource, quality);
-  };
-});
 
 async function startPlayback(source, quality) {
   playerOverlay.classList.remove('hidden');
   playerNotReady.classList.add('hidden');
   videoPlayer.pause(); videoPlayer.removeAttribute('src'); videoPlayer.load();
   clearSubs();
-  playerActive = true; currentSubtitles = source.subtitles || []; activeSubLang = '';
+  playerActive = true; currentSubtitles = source.subtitles || []; activeSubLang = ''; currentQuality = quality || 'auto';
 
   let url = source.videoUrl;
   if (source.qualities?.length) {
@@ -793,7 +928,7 @@ async function startPlayback(source, quality) {
       const l = (sq.quality || sq.label || sq.resolution || '').toLowerCase();
       return l.includes(String(q));
     });
-    if (m) url = m.downloadUrl || m.directUrl || m.url || url;
+    if (m) url = m.url || m.downloadUrl || m.directUrl || url;
   }
 
   if (!url) {
@@ -804,26 +939,23 @@ async function startPlayback(source, quality) {
 
   let title = pendingItem?.title || 'Now Playing';
   if (pendingType === 'tv') title += ` S${currentSeason}E${currentEpisode}`;
-  title += ` (${quality}p)`;
+  title += quality && quality !== 'auto' ? ` (${quality}p)` : '';
   playerTitle.textContent = title;
 
-  videoPlayer.src = url;
+  videoPlayer.controls = false;
+  videoPlayer.playbackRate = currentPlaybackSpeed;
+  videoPlayer.src = proxiedVideoUrl(url);
   videoPlayer.load();
   setupSubs();
+  renderPlayerSettings(source);
+  resetControlsTimer();
+  updatePlayPauseIcon();
 
   videoPlayer.play().catch(e => {});
-
-  setTimeout(() => {
-    try {
-      if (playerOverlay.requestFullscreen) playerOverlay.requestFullscreen();
-      else if (playerOverlay.webkitRequestFullscreen) playerOverlay.webkitRequestFullscreen();
-    } catch {}
-  }, 3000);
 }
 
 // ===== SUBTITLES =====
 function setupSubs() {
-  subtitleControls?.classList.remove('hidden');
   subtitleMenu.innerHTML = '';
   const off = document.createElement('button');
   off.className = 'subtitle-option' + (activeSubLang === '' ? ' active' : '');
@@ -867,8 +999,65 @@ function closePlayer() {
   playerActive = false; videoPlayer.pause(); videoPlayer.removeAttribute('src'); videoPlayer.load();
   clearSubs();
   playerOverlay.classList.add('hidden');
-  subtitleControls?.classList.add('hidden');
   subtitleMenu?.classList.add('hidden');
+  settingsMenu?.classList.add('hidden');
+  if (playerControls) playerControls.classList.remove('hidden-ui');
+  if (playerTopBar) playerTopBar.classList.remove('hidden-ui');
+}
+
+function updatePlayPauseIcon() {
+  if (!playPauseIcon) return;
+  playPauseIcon.innerHTML = videoPlayer.paused
+    ? '<polygon points="5,3 19,12 5,21"></polygon>'
+    : '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+}
+
+function renderPlayerSettings(source) {
+  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  if (speedOptions) {
+    speedOptions.innerHTML = speeds.map(speed => `<button class="player-settings-option ${speed === currentPlaybackSpeed ? 'active' : ''}" data-speed="${speed}">${speed}x</button>`).join('');
+    speedOptions.querySelectorAll('[data-speed]').forEach(btn => {
+      btn.onclick = () => {
+        currentPlaybackSpeed = parseFloat(btn.dataset.speed);
+        videoPlayer.playbackRate = currentPlaybackSpeed;
+        renderPlayerSettings(source);
+      };
+    });
+  }
+
+  if (qualityMenuOptions) {
+    const qualities = source?.qualities?.length ? source.qualities : [{ quality: 'auto', url: source?.videoUrl, downloadUrl: source?.videoUrl }];
+    qualityMenuOptions.innerHTML = qualities.map(q => {
+      const match = String(q.quality || '').match(/(\d{3,4})/);
+      const value = match ? match[1] : 'auto';
+      const label = match ? `${match[1]}p` : (q.quality || 'Auto');
+      return `<button class="player-settings-option ${String(currentQuality) === String(value) ? 'active' : ''}" data-player-quality="${value}">${label}</button>`;
+    }).join('');
+    qualityMenuOptions.querySelectorAll('[data-player-quality]').forEach(btn => {
+      btn.onclick = async () => {
+        const nextQuality = btn.dataset.playerQuality || 'auto';
+        const currentTime = videoPlayer.currentTime || 0;
+        const paused = videoPlayer.paused;
+        await startPlayback(source, nextQuality);
+        videoPlayer.currentTime = currentTime;
+        if (paused) videoPlayer.pause();
+      };
+    });
+  }
+}
+
+function resetControlsTimer() {
+  if (!playerControls) return;
+  playerControls.classList.remove('hidden-ui');
+  if (playerTopBar) playerTopBar.classList.remove('hidden-ui');
+  clearTimeout(controlsHideTimer);
+  controlsHideTimer = setTimeout(() => {
+    if (!videoPlayer.paused && (!subtitleMenu?.classList.contains('hidden') || !settingsMenu?.classList.contains('hidden'))) return;
+    if (!videoPlayer.paused) {
+      playerControls.classList.add('hidden-ui');
+      if (playerTopBar) playerTopBar.classList.add('hidden-ui');
+    }
+  }, 2600);
 }
 
 // ===== SEARCH OVERLAY =====
@@ -1005,7 +1194,6 @@ playerBack?.addEventListener('click', closePlayer);
 videoPlayer?.addEventListener('timeupdate', () => {
   if (playerActive && videoPlayer.duration > 0) {
     const progress = (videoPlayer.currentTime / videoPlayer.duration) * 100;
-    const c = getContinueProgress(pendingId);
     updateContinueWatching(
       pendingId,
       pendingItem?.title || 'Unknown',
@@ -1016,10 +1204,54 @@ videoPlayer?.addEventListener('timeupdate', () => {
       currentSeason,
       currentEpisode
     );
+    if (playerSeek) playerSeek.value = String((videoPlayer.currentTime / videoPlayer.duration) * 100);
+    if (currentTimeEl) currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+    if (durationTimeEl) durationTimeEl.textContent = formatTime(videoPlayer.duration);
   }
 });
-subtitleBtn?.addEventListener('click', () => subtitleMenu?.classList.toggle('hidden'));
-document.addEventListener('click', e => { if (!e.target.closest('.player-subtitle-controls')) subtitleMenu?.classList.add('hidden'); });
+videoPlayer?.addEventListener('play', () => { updatePlayPauseIcon(); resetControlsTimer(); });
+videoPlayer?.addEventListener('pause', () => { updatePlayPauseIcon(); if (playerControls) playerControls.classList.remove('hidden-ui'); });
+videoPlayer?.addEventListener('loadedmetadata', () => {
+  if (durationTimeEl) durationTimeEl.textContent = formatTime(videoPlayer.duration);
+  if (currentTimeEl) currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
+});
+playPauseBtn?.addEventListener('click', () => {
+  if (videoPlayer.paused) videoPlayer.play().catch(() => {});
+  else videoPlayer.pause();
+  resetControlsTimer();
+});
+rewindBtn?.addEventListener('click', () => {
+  videoPlayer.currentTime = Math.max(0, (videoPlayer.currentTime || 0) - 10);
+  resetControlsTimer();
+});
+forwardBtn?.addEventListener('click', () => {
+  videoPlayer.currentTime = Math.min(videoPlayer.duration || Infinity, (videoPlayer.currentTime || 0) + 10);
+  resetControlsTimer();
+});
+playerSeek?.addEventListener('input', () => {
+  if (!videoPlayer.duration) return;
+  videoPlayer.currentTime = (parseFloat(playerSeek.value) / 100) * videoPlayer.duration;
+});
+subtitleBtn?.addEventListener('click', () => {
+  settingsMenu?.classList.add('hidden');
+  subtitleMenu?.classList.toggle('hidden');
+  resetControlsTimer();
+});
+settingsBtn?.addEventListener('click', () => {
+  subtitleMenu?.classList.add('hidden');
+  settingsMenu?.classList.toggle('hidden');
+  resetControlsTimer();
+});
+playerOverlay?.addEventListener('mousemove', resetControlsTimer);
+playerOverlay?.addEventListener('click', e => {
+  if (e.target === playerOverlay || e.target === videoPlayer) resetControlsTimer();
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.player-control') && !e.target.closest('.player-menu')) {
+    subtitleMenu?.classList.add('hidden');
+    settingsMenu?.classList.add('hidden');
+  }
+});
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -1039,6 +1271,7 @@ if ('serviceWorker' in navigator) {
 
 // ===== INIT =====
 async function init() {
+  renderDownloads();
   try { await loadHero(); } catch {}
   try { await loadHome(); } catch {}
 }
