@@ -1041,16 +1041,23 @@ function closePlayer() {
 }
 
 function showAutoplayModal(title, nextData) {
+  console.log('showAutoplayModal called:', title, nextData);
   nextEpisodeData = nextData;
   autoplayCountdown = 5;
-  if (autoplayTitle) autoplayTitle.textContent = title;
+  if (autoplayTitle) {
+    console.log('Setting autoplayTitle:', title);
+    autoplayTitle.textContent = title;
+  }
   if (autoplaySeconds) autoplaySeconds.textContent = '5';
   if (autoplayProgress) {
     autoplayProgress.style.animation = 'none';
     autoplayProgress.offsetHeight;
     autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
   }
-  autoplayModal.classList.remove('hidden');
+  if (autoplayModal) {
+    console.log('Showing autoplay modal');
+    autoplayModal.classList.remove('hidden');
+  }
   
   clearInterval(autoplayTimer);
   autoplayTimer = setInterval(() => {
@@ -1321,6 +1328,7 @@ videoPlayer?.addEventListener('loadedmetadata', () => {
   if (currentTimeEl) currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
 });
 videoPlayer?.addEventListener('ended', () => {
+  console.log('Video ended, pendingType:', pendingType, 'pendingId:', pendingId);
   if (pendingType === 'tv') {
     const nextEp = currentEpisode + 1;
     const title = `Playing ${pendingItem?.title || 'Episode'} Season ${currentSeason} Episode ${nextEp}`;
@@ -1402,8 +1410,16 @@ async function init() {
 
 // Auto-start
 if (intro) {
+  console.log('Intro element found, playing intro');
   setTimeout(() => playIntro(), 2200);
 } else {
+  console.log('No intro, showing app');
   if (app) app.style.display = 'block';
   init().catch(() => {});
 }
+
+console.log('Checking autoplay elements:');
+console.log('autoplayModal:', !!autoplayModal);
+console.log('autoplayTitle:', !!autoplayTitle);
+console.log('autoplayPlayBtn:', !!autoplayPlayBtn);
+console.log('autoplayCancelBtn:', !!autoplayCancelBtn);
