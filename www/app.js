@@ -1043,10 +1043,13 @@ function closePlayer() {
 
 function showAutoplayModal(title, nextData) {
   console.log('showAutoplayModal called:', title, nextData);
+  if (!autoplayModal) {
+    console.error('autoplayModal is null!');
+    return;
+  }
   nextEpisodeData = nextData;
   autoplayCountdown = 5;
   if (autoplayTitle) {
-    console.log('Setting autoplayTitle:', title);
     autoplayTitle.textContent = title;
   }
   if (autoplaySeconds) autoplaySeconds.textContent = '5';
@@ -1055,10 +1058,8 @@ function showAutoplayModal(title, nextData) {
     autoplayProgress.offsetHeight;
     autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
   }
-  if (autoplayModal) {
-    console.log('Showing autoplay modal');
-    autoplayModal.classList.remove('hidden');
-  }
+  autoplayModal.classList.remove('hidden');
+  console.log('Autoplay modal shown successfully');
   
   clearInterval(autoplayTimer);
   autoplayTimer = setInterval(() => {

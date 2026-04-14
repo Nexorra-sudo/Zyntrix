@@ -1042,12 +1042,34 @@ function closePlayer() {
 
 function showAutoplayModal(title, nextData) {
   console.log('showAutoplayModal called:', title, nextData);
+  if (!autoplayModal) {
+    console.error('autoplayModal is null!');
+    return;
+  }
   nextEpisodeData = nextData;
   autoplayCountdown = 5;
   if (autoplayTitle) {
-    console.log('Setting autoplayTitle:', title);
     autoplayTitle.textContent = title;
   }
+  if (autoplaySeconds) autoplaySeconds.textContent = '5';
+  if (autoplayProgress) {
+    autoplayProgress.style.animation = 'none';
+    autoplayProgress.offsetHeight;
+    autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
+  }
+  autoplayModal.classList.remove('hidden');
+  console.log('Autoplay modal shown successfully');
+  
+  clearInterval(autoplayTimer);
+  autoplayTimer = setInterval(() => {
+    autoplayCountdown--;
+    if (autoplaySeconds) autoplaySeconds.textContent = String(autoplayCountdown);
+    if (autoplayCountdown <= 0) {
+      clearInterval(autoplayTimer);
+      playNextEpisode();
+    }
+  }, 1000);
+}
   if (autoplaySeconds) autoplaySeconds.textContent = '5';
   if (autoplayProgress) {
     autoplayProgress.style.animation = 'none';

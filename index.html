@@ -362,5 +362,10 @@
   </div>
 
   <script src="app.js?v=2"></script>
+<script>
+  window.onerror = function(msg, url, line) {
+    console.error('Error:', msg, 'at line', line);
+  };
+</script>
 </body>
 </html>
