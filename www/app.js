@@ -38,7 +38,6 @@ let nextEpisodeData = null;
 const $ = id => document.getElementById(id);
 const intro = $('intro');
 const app = $('app');
-console.log('App loaded, intro:', !!intro, 'app:', !!app);
 const heroBackdrop = $('heroBackdrop');
 const heroTitle = $('heroTitle');
 const heroOverview = $('heroOverview');
@@ -839,31 +838,36 @@ async function fetchSource(id, type) {
   let qualities = [];
 
   if (srcData) {
+    // Try processedSources first (new API format)
     if (srcData.processedSources?.[0]) {
       const ps = srcData.processedSources[0];
-      videoUrl = ps.directUrl || ps.streamUrl || ps.downloadUrl;
+      videoUrl = ps.streamUrl || ps.directUrl;
       qualities = srcData.processedSources.map(s => ({
         quality: s.quality || 'Auto',
-        url: s.directUrl || s.streamUrl || s.downloadUrl,
-        downloadUrl: s.downloadUrl || s.directUrl || s.streamUrl
+        url: s.streamUrl || s.directUrl || s.downloadUrl,
+        directUrl: s.directUrl,
+        streamUrl: s.streamUrl,
+        downloadUrl: s.downloadUrl
       }));
-    } else if (srcData.downloads?.[0]) {
+    } 
+    // Fallback to downloads
+    else if (srcData.downloads?.[0]) {
       const dl = srcData.downloads[0];
       videoUrl = dl.url;
       qualities = srcData.downloads.map(d => ({
-        quality: d.quality || d.label || d.resolution || 'Auto',
-        url: d.url || d.downloadUrl,
-        downloadUrl: d.downloadUrl || d.url
+        quality: d.resolution || d.quality || 'Auto',
+        url: d.url
       }));
     } else if (srcData.url) {
       videoUrl = srcData.url;
     }
 
-    if (srcData.subtitles?.length) {
-      subtitles = srcData.subtitles.map((st, i) => ({
-        label: st.label || st.language || `Sub ${i+1}`,
-        language: st.language || st.label || `s${i}`,
-        url: st.url || st.src || ''
+    // Handle subtitles from "captions" field (not "subtitles")
+    if (srcData.captions?.length) {
+      subtitles = srcData.captions.map((st, i) => ({
+        label: st.lanName || st.lan || `Sub ${i+1}`,
+        language: st.lan || `s${i}`,
+        url: st.url || ''
       }));
     }
   }
@@ -1042,16 +1046,10 @@ function closePlayer() {
 }
 
 function showAutoplayModal(title, nextData) {
-  console.log('showAutoplayModal called:', title, nextData);
-  if (!autoplayModal) {
-    console.error('autoplayModal is null!');
-    return;
-  }
+  if (!autoplayModal) return;
   nextEpisodeData = nextData;
   autoplayCountdown = 5;
-  if (autoplayTitle) {
-    autoplayTitle.textContent = title;
-  }
+  if (autoplayTitle) autoplayTitle.textContent = title;
   if (autoplaySeconds) autoplaySeconds.textContent = '5';
   if (autoplayProgress) {
     autoplayProgress.style.animation = 'none';
@@ -1059,7 +1057,6 @@ function showAutoplayModal(title, nextData) {
     autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
   }
   autoplayModal.classList.remove('hidden');
-  console.log('Autoplay modal shown successfully');
   
   clearInterval(autoplayTimer);
   autoplayTimer = setInterval(() => {
@@ -1330,7 +1327,6 @@ videoPlayer?.addEventListener('loadedmetadata', () => {
   if (currentTimeEl) currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
 });
 videoPlayer?.addEventListener('ended', () => {
-  console.log('Video ended, pendingType:', pendingType, 'pendingId:', pendingId);
   if (pendingType === 'tv') {
     const nextEp = currentEpisode + 1;
     const title = `Playing ${pendingItem?.title || 'Episode'} Season ${currentSeason} Episode ${nextEp}`;
@@ -1412,16 +1408,8 @@ async function init() {
 
 // Auto-start
 if (intro) {
-  console.log('Intro element found, playing intro');
   setTimeout(() => playIntro(), 2200);
 } else {
-  console.log('No intro, showing app');
   if (app) app.style.display = 'block';
   init().catch(() => {});
 }
-
-console.log('Checking autoplay elements:');
-console.log('autoplayModal:', !!autoplayModal);
-console.log('autoplayTitle:', !!autoplayTitle);
-console.log('autoplayPlayBtn:', !!autoplayPlayBtn);
-console.log('autoplayCancelBtn:', !!autoplayCancelBtn);
