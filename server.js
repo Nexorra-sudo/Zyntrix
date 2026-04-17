@@ -131,6 +131,58 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Proxy for David API (apis.davidcyril.name.ng)
+  if (requestUrl.pathname.startsWith('/api/david/')) {
+    const apiPath = requestUrl.pathname.replace('/api/david/', '');
+    const targetUrl = `https://apis.davidcyril.name.ng/endpoints/movies/${apiPath}${requestUrl.search}`;
+    
+    const proxyReq = https.request(targetUrl, { method: 'GET', headers: { 'Accept': 'application/json' } }, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', chunk => data += chunk);
+      proxyRes.on('end', () => {
+        res.writeHead(proxyRes.statusCode, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(data);
+      });
+    });
+    
+    proxyReq.on('error', (e) => {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: e.message }));
+    });
+    
+    proxyReq.end();
+    return;
+  }
+
+  // Proxy for Silent Movies Subtitles API
+  if (requestUrl.pathname.startsWith('/api/silent-subtitles/')) {
+    const imdbId = requestUrl.pathname.replace('/api/silent-subtitles/', '');
+    const targetUrl = `https://silent-movies-api.vercel.app/subtitles?imdb=${imdbId}`;
+    
+    const proxyReq = https.request(targetUrl, { method: 'GET', headers: { 'Accept': 'application/json' } }, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', chunk => data += chunk);
+      proxyRes.on('end', () => {
+        res.writeHead(proxyRes.statusCode, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(data);
+      });
+    });
+    
+    proxyReq.on('error', (e) => {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: e.message }));
+    });
+    
+    proxyReq.end();
+    return;
+  }
+
   // Proxy for video streaming to avoid CORS
   if (requestUrl.pathname.startsWith('/video-proxy/')) {
     const videoUrl = decodeURIComponent(requestUrl.pathname.replace('/video-proxy/', ''));

@@ -166,17 +166,20 @@
           </button>
           <span class="player-title" id="playerTitle"></span>
         </div>
-        <video id="videoPlayer" playsinline webkit-playsinline preload="auto" class="video-player"></video>
+        <video id="videoPlayer" playsinline webkit-playsinline preload="auto" class="video-player" crossorigin="anonymous"></video>
+        <div class="player-loading hidden" id="playerLoading">
+          <div class="loading-spinner large"></div>
+          <span class="loading-text">Loading...</span>
+        </div>
+        <div class="player-tap-zones" id="playerTapZones">
+          <div class="player-tap-zone" data-zone="left" id="tapZoneLeft"></div>
+          <div class="player-tap-zone" data-zone="center" id="tapZoneCenter"></div>
+          <div class="player-tap-zone" data-zone="right" id="tapZoneRight"></div>
+        </div>
         <div class="player-controls" id="playerControls">
           <div class="player-center-controls">
-            <button class="player-control player-seek" id="rewindBtn" aria-label="Rewind 10 seconds">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
-            </button>
             <button class="player-control player-play-main" id="playPauseBtn" aria-label="Play or pause">
               <svg id="playPauseIcon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"></polygon></svg>
-            </button>
-            <button class="player-control player-seek" id="forwardBtn" aria-label="Forward 10 seconds">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
             </button>
           </div>
           <div class="player-bottom-controls">
@@ -188,7 +191,7 @@
             <div class="player-action-row">
               <button class="player-control" id="playerSubtitleBtn" aria-label="Subtitles">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M7 12h2"></path><path d="M11 12h6"></path><path d="M7 16h10"></path></svg>
-                <span id="subtitleLabel">Off</span>
+                <span id="subtitleLabel">CC</span>
               </button>
               <button class="player-control" id="playerSettingsBtn" aria-label="Player settings">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
@@ -200,15 +203,31 @@
               </button>
             </div>
           </div>
-          <div class="player-menu hidden" id="subtitleMenu"></div>
-          <div class="player-menu hidden player-settings-menu" id="settingsMenu">
-            <div class="player-settings-group">
-              <p class="player-settings-title">Playback speed</p>
-              <div class="player-settings-options" id="speedOptions"></div>
+          <!-- Subtitle toggle indicator -->
+          <div class="player-cc-indicator hidden" id="ccIndicator">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="4" width="20" height="16" rx="2"></rect></svg>
+          </div>
+          <!-- Compact Settings Panel -->
+          <div class="player-settings-panel hidden" id="settingsPanel">
+            <div class="settings-panel-header">
+              <button class="settings-back-btn" id="settingsBackBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <span>Settings</span>
             </div>
-            <div class="player-settings-group">
-              <p class="player-settings-title">Quality</p>
-              <div class="player-settings-options" id="qualityMenuOptions"></div>
+            <div class="settings-panel-content">
+              <div class="settings-group">
+                <p class="settings-label">Subtitles</p>
+                <div class="settings-options" id="subtitleOptions"></div>
+              </div>
+              <div class="settings-group">
+                <p class="settings-label">Playback Speed</p>
+                <div class="settings-options" id="speedOptionsPanel"></div>
+              </div>
+              <div class="settings-group">
+                <p class="settings-label">Quality</p>
+                <div class="settings-options" id="qualityOptionsPanel"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -319,6 +338,10 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         <span>Downloads</span>
       </button>
+      <button class="bottom-nav-item" data-nav="profile">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>Profile</span>
+      </button>
     </nav>
 
     <!-- Full Screen Search Overlay -->
@@ -356,6 +379,70 @@
           <p>No downloads yet</p>
           <span>Downloaded movies and shows will appear here</span>
         </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Page -->
+    <div class="downloads-page hidden" id="profilePage">
+      <div class="downloads-header">
+        <h2>My Profile</h2>
+      </div>
+      <div class="profile-body" id="profileBody">
+        <div class="profile-login" id="profileLogin">
+          <div class="profile-avatar">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
+          <h3>Sign in to your account</h3>
+          <p>Sync your downloads, continue watching, and my list across devices</p>
+          <button class="profile-signin-btn" id="profileSigninBtn">Sign In</button>
+        </div>
+        <div class="profile-info hidden" id="profileInfo">
+          <div class="profile-avatar-lg">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
+          <h3 id="profileName">User</h3>
+          <p id="profileEmail">user@example.com</p>
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <span class="stat-value" id="statDownloads">0</span>
+              <span class="stat-label">Downloads</span>
+            </div>
+            <div class="profile-stat">
+              <span class="stat-value" id="statContinue">0</span>
+              <span class="stat-label">Continue Watching</span>
+            </div>
+            <div class="profile-stat">
+              <span class="stat-value" id="statList">0</span>
+              <span class="stat-label">My List</span>
+            </div>
+          </div>
+          <div class="profile-settings-section">
+            <h4>Settings</h4>
+            <div class="profile-settings-list">
+              <button class="profile-setting-item" id="settingAutoPlay">
+                <span>Auto-play next episode</span>
+                <span class="setting-toggle" data-active="true">On</span>
+              </button>
+              <button class="profile-setting-item" id="settingNotifications">
+                <span>Notifications</span>
+                <span class="setting-toggle" data-active="true">On</span>
+              </button>
+              <button class="profile-setting-item" id="settingDownloadWifi">
+                <span>Download over Wi-Fi only</span>
+                <span class="setting-toggle" data-active="true">On</span>
+              </button>
+              <button class="profile-setting-item" id="settingDataSaver">
+                <span>Data Saver</span>
+                <span class="setting-toggle" data-active="false">Off</span>
+              </button>
+              <button class="profile-setting-item" id="settingDarkMode">
+                <span>Dark Mode</span>
+                <span class="setting-toggle active" data-active="true">On</span>
+              </button>
+            </div>
+          </div>
+          <button class="profile-signout-btn" id="profileSignoutBtn">Sign Out</button>
         </div>
       </div>
     </div>
