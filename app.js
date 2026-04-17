@@ -827,63 +827,68 @@ async function fetchSource(id, type) {
   const s = type === 'tv' ? currentSeason : 1;
   const e = type === 'tv' ? currentEpisode : 1;
 
-  let sourceUrl = `${CV_API}/sources/${id}`;
-  if (type === 'tv') sourceUrl += `?season=${s}&episode=${e}`;
-
-  const srcRes = await cvFetch(sourceUrl);
-  const srcData = srcRes?.data || srcRes;
-
   let videoUrl = null;
   let subtitles = [];
   let qualities = [];
 
-  if (srcData) {
-    // Try processedSources first (new API format)
-    if (srcData.processedSources?.[0]) {
-      const ps = srcData.processedSources[0];
-      videoUrl = ps.streamUrl || ps.directUrl;
-      qualities = srcData.processedSources.map(s => ({
+  // Directly use David's API for streaming
+  try {
+    const davidRes = await fetch(`${DAVID_API}/watch/${id}`, { 
+      headers: { 'Accept': 'application/json' } 
+    });
+    const davidData = await davidRes.json();
+    
+    if (davidData?.data?.streams && davidData.data.streams.length > 0) {
+      videoUrl = davidData.data.streams[0].url;
+      qualities = davidData.data.streams.map(s => ({
         quality: s.quality || 'Auto',
-        url: s.streamUrl || s.directUrl || s.downloadUrl,
-        directUrl: s.directUrl,
-        streamUrl: s.streamUrl,
-        downloadUrl: s.downloadUrl
+        url: s.url
       }));
-    } 
-    // Fallback to downloads
-    else if (srcData.downloads?.[0]) {
-      const dl = srcData.downloads[0];
-      videoUrl = dl.url;
-      qualities = srcData.downloads.map(d => ({
-        quality: d.resolution || d.quality || 'Auto',
-        url: d.url
-      }));
-    } else if (srcData.url) {
-      videoUrl = srcData.url;
     }
+    
+    // Get IMDb ID for subtitles
+    const imdbId = davidData?.data?.imdb_id;
+    if (imdbId) {
+      const subData = await fetchSubtitles(imdbId);
+      if (subData.length) subtitles = subData;
+    }
+  } catch (e) { console.warn('David API error:', e); }
 
-    // Handle subtitles from "captions" field (not "subtitles")
-    if (srcData.captions?.length) {
-      subtitles = srcData.captions.map((st, i) => ({
-        label: st.lanName || st.lan || `Sub ${i+1}`,
-        language: st.lan || `s${i}`,
-        url: st.url || ''
-      }));
-    }
+  // Fallback to CV_API if David fails
+  if (!videoUrl) {
+    try {
+      let sourceUrl = `${CV_API}/sources/${id}`;
+      if (type === 'tv') sourceUrl += `?season=${s}&episode=${e}`;
+      const srcRes = await cvFetch(sourceUrl);
+      const srcData = srcRes?.data || srcRes;
+      if (srcData) {
+        if (srcData.processedSources?.[0]) {
+          videoUrl = srcData.processedSources[0].streamUrl || srcData.processedSources[0].directUrl;
+          qualities = srcData.processedSources.map(s => ({
+            quality: s.quality || 'Auto',
+            url: s.streamUrl || s.directUrl || s.downloadUrl
+          }));
+        } else if (srcData.downloads?.[0]) {
+          videoUrl = srcData.downloads[0].url;
+          qualities = srcData.downloads.map(d => ({
+            quality: d.resolution || d.quality || 'Auto',
+            url: d.url
+          }));
+        } else if (srcData.url) {
+          videoUrl = srcData.url;
+        }
+        if (srcData.captions?.length) {
+          subtitles = srcData.captions.map((st, i) => ({
+            label: st.lanName || st.lan || `Sub ${i+1}`,
+            language: st.lan || `s${i}`,
+            url: st.url || ''
+          }));
+        }
+      }
+    } catch (e) { console.warn('CV API error:', e); }
   }
 
   return { videoUrl, subtitles, qualities };
-}
-      subtitles = srcData.subtitles.map((st, i) => ({
-        label: st.label || st.language || `Sub ${i+1}`,
-        language: st.language || st.label || `s${i}`,
-        url: st.url || st.src || ''
-      }));
-    }
-  }
-
-  fetchedSource = { videoUrl, subtitles, qualities };
-  return fetchedSource;
 }
 
 function renderQualityOptions(source) {

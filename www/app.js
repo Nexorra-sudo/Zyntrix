@@ -4,8 +4,6 @@
 
 // ===== CONFIG =====
 const CV_API = '/api/cv';
-const DAVID_API = '/api/david';
-const SILENT_API = '/api/silent-subtitles';
 const CV_HEADERS = { 'Accept': 'application/json' };
 const MYLIST_KEY = 'zynflix-list-v2';
 const INTRO_KEY = 'zynflix-intro';
@@ -35,8 +33,6 @@ let allTrending = [];
 let autoplayTimer = null;
 let autoplayCountdown = 5;
 let nextEpisodeData = null;
-let lastTapTime = 0;
-let lastTapPosition = 'center';
 
 // ===== DOM =====
 const $ = id => document.getElementById(id);
@@ -71,7 +67,6 @@ const episodeList = $('episodeList');
 const similarGrid = $('similarGrid');
 const playerOverlay = $('playerOverlay');
 const videoPlayer = $('videoPlayer');
-const playerLoading = $('playerLoading');
 const playerBack = $('playerBack');
 const playerTitle = $('playerTitle');
 const playerTopBar = document.querySelector('.player-top-bar');
@@ -80,12 +75,6 @@ const subtitleMenu = $('subtitleMenu');
 const subtitleLabel = $('subtitleLabel');
 const settingsMenu = $('settingsMenu');
 const settingsBtn = $('playerSettingsBtn');
-const settingsPanel = $('settingsPanel');
-const settingsBackBtn = $('settingsBackBtn');
-const subtitleOptions = $('subtitleOptions');
-const speedOptionsPanel = $('speedOptionsPanel');
-const qualityOptionsPanel = $('qualityOptionsPanel');
-const ccIndicator = $('ccIndicator');
 const fullscreenBtn = $('fullscreenBtn');
 const fullscreenIcon = $('fullscreenIcon');
 const fullscreenLabel = $('fullscreenLabel');
@@ -116,34 +105,20 @@ const recentSearchList = $('recentSearchList');
 const clearRecentSearches = $('clearRecentSearches');
 const searchOverlayResults = $('searchOverlayResults');
 const downloadsPage = $('downloadsPage');
-const profilePage = $('profilePage');
-const profileLogin = $('profileLogin');
-const profileInfo = $('profileInfo');
-const profileName = $('profileName');
-const profileEmail = $('profileEmail');
-const statDownloads = $('statDownloads');
-const statContinue = $('statContinue');
-const statList = $('statList');
-const profileSigninBtn = $('profileSigninBtn');
-const profileSignoutBtn = $('profileSignoutBtn');
 const downloadsGrid = $('downloadsGrid');
 const downloadsNote = $('downloadsNote');
 const mylistResults = $('myListResults');
 const installPrompt = $('installPrompt');
 const installDismiss = $('installDismiss');
-const castGrid = $('castGrid');
-const modalAddList = $('modalAddList');
-const modalDownload = $('modalDownload');
 const autoplayModal = $('autoplayModal');
 const autoplayTitle = $('autoplayTitle');
 const autoplayProgress = $('autoplayProgress');
 const autoplaySeconds = $('autoplaySeconds');
 const autoplayPlayBtn = $('autoplayPlayBtn');
 const autoplayCancelBtn = $('autoplayCancelBtn');
-const playerTapZones = $('playerTapZones');
-const tapZoneLeft = $('tapZoneLeft');
-const tapZoneCenter = $('tapZoneCenter');
-const tapZoneRight = $('tapZoneRight');
+const castGrid = $('castGrid');
+const modalAddList = $('modalAddList');
+const modalDownload = $('modalDownload');
 
 // ===== UTILS =====
 function getYear(d) { return d ? d.split('-')[0] : ''; }
@@ -268,68 +243,6 @@ async function cvPopular() {
   return data?.data?.items || [];
 }
 
-async function fetchDavidPopular() {
-  try {
-    const res = await fetch(`${DAVID_API}/latest`);
-    const data = await res.json();
-    if (data?.data?.result) {
-      return data.data.result.map(item => ({
-        subjectId: item.id || item.movie_id,
-        title: (item.title || item.name || 'Unknown').substring(0, 20),
-        thumbnail: item.thumbnail || item.poster,
-        cover: { url: item.thumbnail || item.poster },
-        subjectType: 1,
-        rating: item.rating || '',
-        releaseDate: item.year || ''
-      }));
-    }
-    return [];
-  } catch (e) { 
-    console.warn('David API error:', e); 
-    return []; 
-  }
-}
-
-async function fetchDavidTrending() {
-  try {
-    const res = await fetch(`${DAVID_API}/trending`);
-    const data = await res.json();
-    if (data?.data?.result) {
-      return data.data.result.map(item => ({
-        subjectId: item.id || item.movie_id,
-        title: (item.title || item.name || 'Unknown').substring(0, 20),
-        thumbnail: item.thumbnail || item.poster,
-        cover: { url: item.thumbnail || item.poster },
-        subjectType: 1,
-        rating: item.rating || '',
-        releaseDate: item.year || ''
-      }));
-    }
-    return [];
-  } catch (e) { 
-    console.warn('David Trending API error:', e); 
-    return []; 
-  }
-}
-
-async function fetchSubtitles(imdbId) {
-  try {
-    const res = await fetch(`${SILENT_API}/${imdbId}`);
-    const data = await res.json();
-    if (data?.subtitles) {
-      return data.subtitles.map(s => ({
-        label: s.lang || s.language || 'Subtitle',
-        language: s.lang_code || s.language_code || 'en',
-        url: s.url || s.link
-      }));
-    }
-    return [];
-  } catch (e) { 
-    console.warn('Subtitle API error:', e); 
-    return []; 
-  }
-}
-
 async function cvInfo(subjectId) {
   const data = await cvFetch(`${CV_API}/info/${subjectId}`);
   return data?.data?.subject || data?.data || null;
@@ -364,11 +277,12 @@ playIntro = function() {
 // ===== HERO BANNER =====
 async function loadHero() {
   try {
-    const trending = await fetchDavidPopular();
+    const trending = await cvPopular();
     heroItems = trending.filter(m => (m.cover?.url || m.thumbnail)).slice(0, 10);
     if (!heroItems.length) {
-      const fallback = await cvPopular();
-      heroItems = fallback.filter(m => (m.cover?.url || m.thumbnail)).slice(0, 10);
+      // Fallback
+      const movies = await cvSearch('action');
+      heroItems = movies.filter(m => (m.cover?.url || m.thumbnail)).slice(0, 10);
     }
     if (!heroItems.length) return;
     heroIdx = 0;
@@ -533,19 +447,18 @@ async function loadHome() {
   rowsContainer.innerHTML = '<div style="display:flex;justify-content:center;padding:60px 0;"><div class="loading-spinner large"></div></div>';
 
   try {
-    const davidPopular = await fetchDavidPopular();
-    const davidTrending = await fetchDavidTrending();
-    allTrending = davidTrending.length ? davidTrending : (davidPopular.length ? davidPopular : await cvPopular());
-    const top10 = allTrending.slice(0, 10);
-    const popularSeriesBase = allTrending.filter(t => t.subjectType === 2);
+    const trending = await cvPopular();
+    allTrending = trending;
+    const top10 = trending.slice(0, 10);
+    const popularSeriesBase = trending.filter(t => t.subjectType === 2);
 
     const continueList = continueWatching.filter(c => {
-      const item = allTrending.find(t => String(t.subjectId || t.id) === String(c.id));
+      const item = trending.find(t => String(t.subjectId || t.id) === String(c.id));
       return item && c.progress > 0 && c.progress < 95;
     });
 
     const popularSeriesResults = popularSeriesBase.length ? popularSeriesBase : await cvSearch('popular series');
-    const trendingResults = davidTrending.length ? davidTrending : allTrending;
+    const trendingResults = trending;
     const dramaResults = await cvSearch('drama');
     const nollywoodResults = await cvSearch('nollywood');
     const horrorResults = await cvSearch('horror');
@@ -562,10 +475,8 @@ async function loadHome() {
 
     const rows = [];
     if (continueList.length) rows.push({ title: 'Continue Watching', items: continueList, isContinue: true });
-    if (davidPopular.length) rows.push({ title: 'Popular Movies', items: davidPopular });
-    if (davidTrending.length) rows.push({ title: 'Trending Now', items: davidTrending });
     if (popularSeriesResults.length) rows.push({ title: 'Popular Series', items: popularSeriesResults });
-    if (trendingResults.length && !davidTrending.length) rows.push({ title: 'Trending Now', items: trendingResults });
+    if (trendingResults.length) rows.push({ title: 'Trending Now', items: trendingResults });
     if (dramaResults.length) rows.push({ title: 'Drama', items: dramaResults });
     if (nollywoodResults.length) rows.push({ title: 'Nollywood', items: nollywoodResults });
     if (horrorResults.length) rows.push({ title: 'Horror', items: horrorResults });
@@ -630,17 +541,7 @@ async function loadCategory(cat) {
   if (cat === 'downloads') {
     rowsContainer.style.display = 'none';
     downloadsPage.classList.remove('hidden');
-    if (profilePage) profilePage.classList.add('hidden');
     renderDownloads();
-    return;
-  }
-  if (cat === 'profile') {
-    rowsContainer.style.display = 'none';
-    downloadsPage.classList.add('hidden');
-    if (profilePage) {
-      profilePage.classList.remove('hidden');
-      updateProfileUI();
-    }
     return;
   }
 }
@@ -926,79 +827,68 @@ async function fetchSource(id, type) {
   const s = type === 'tv' ? currentSeason : 1;
   const e = type === 'tv' ? currentEpisode : 1;
 
-  let sourceUrl = `${CV_API}/sources/${id}`;
-  if (type === 'tv') sourceUrl += `?season=${s}&episode=${e}`;
-
-  const srcRes = await cvFetch(sourceUrl);
-  const srcData = srcRes?.data || srcRes;
-
   let videoUrl = null;
   let subtitles = [];
   let qualities = [];
 
-  if (srcData) {
-    // Try processedSources first (new API format)
-    if (srcData.processedSources?.[0]) {
-      const ps = srcData.processedSources[0];
-      videoUrl = ps.streamUrl || ps.directUrl;
-      qualities = srcData.processedSources.map(s => ({
+  // Directly use David's API for streaming
+  try {
+    const davidRes = await fetch(`${DAVID_API}/watch/${id}`, { 
+      headers: { 'Accept': 'application/json' } 
+    });
+    const davidData = await davidRes.json();
+    
+    if (davidData?.data?.streams && davidData.data.streams.length > 0) {
+      videoUrl = davidData.data.streams[0].url;
+      qualities = davidData.data.streams.map(s => ({
         quality: s.quality || 'Auto',
-        url: s.streamUrl || s.directUrl || s.downloadUrl,
-        directUrl: s.directUrl,
-        streamUrl: s.streamUrl,
-        downloadUrl: s.downloadUrl
+        url: s.url
       }));
-    } 
-    // Fallback to downloads
-    else if (srcData.downloads?.[0]) {
-      const dl = srcData.downloads[0];
-      videoUrl = dl.url;
-      qualities = srcData.downloads.map(d => ({
-        quality: d.resolution || d.quality || 'Auto',
-        url: d.url
-      }));
-    } else if (srcData.url) {
-      videoUrl = srcData.url;
     }
+    
+    // Get IMDb ID for subtitles
+    const imdbId = davidData?.data?.imdb_id;
+    if (imdbId) {
+      const subData = await fetchSubtitles(imdbId);
+      if (subData.length) subtitles = subData;
+    }
+  } catch (e) { console.warn('David API error:', e); }
 
-    // Get subtitles from David API if available
-    if (srcData.imdb_id) {
-      try {
-        const davidRes = await fetch(`${DAVID_API}/watch/${id}`, { 
-          headers: { 'Accept': 'application/json' } 
-        });
-        const davidData = await davidRes.json();
-        if (davidData?.data?.streams) {
-          const streams = davidData.data.streams;
-          if (streams.length > 0) {
-            videoUrl = streams[0].url || videoUrl;
-            qualities = streams.map(s => ({
-              quality: s.quality || 'Auto',
-              url: s.url
-            }));
-          }
+  // Fallback to CV_API if David fails
+  if (!videoUrl) {
+    try {
+      let sourceUrl = `${CV_API}/sources/${id}`;
+      if (type === 'tv') sourceUrl += `?season=${s}&episode=${e}`;
+      const srcRes = await cvFetch(sourceUrl);
+      const srcData = srcRes?.data || srcRes;
+      if (srcData) {
+        if (srcData.processedSources?.[0]) {
+          videoUrl = srcData.processedSources[0].streamUrl || srcData.processedSources[0].directUrl;
+          qualities = srcData.processedSources.map(s => ({
+            quality: s.quality || 'Auto',
+            url: s.streamUrl || s.directUrl || s.downloadUrl
+          }));
+        } else if (srcData.downloads?.[0]) {
+          videoUrl = srcData.downloads[0].url;
+          qualities = srcData.downloads.map(d => ({
+            quality: d.resolution || d.quality || 'Auto',
+            url: d.url
+          }));
+        } else if (srcData.url) {
+          videoUrl = srcData.url;
         }
-        // Fetch subtitles from Silent API
-        if (davidData?.data?.imdb_id) {
-          const subData = await fetchSubtitles(davidData.data.imdb_id);
-          if (subData.length) subtitles = subData;
+        if (srcData.captions?.length) {
+          subtitles = srcData.captions.map((st, i) => ({
+            label: st.lanName || st.lan || `Sub ${i+1}`,
+            language: st.lan || `s${i}`,
+            url: st.url || ''
+          }));
         }
-      } catch (e) { console.warn('David API error:', e); }
-    }
-
-    // Handle subtitles from "captions" field (not "subtitles")
-    if (srcData.captions?.length) {
-      const capSubs = srcData.captions.map((st, i) => ({
-        label: st.lanName || st.lan || `Sub ${i+1}`,
-        language: st.lan || `s${i}`,
-        url: st.url || ''
-      }));
-      subtitles = [...capSubs, ...subtitles];
-    }
+      }
+    } catch (e) { console.warn('CV API error:', e); }
   }
 
-  fetchedSource = { videoUrl, subtitles, qualities };
-  return fetchedSource;
+  return { videoUrl, subtitles, qualities };
 }
 
 function renderQualityOptions(source) {
@@ -1073,11 +963,9 @@ qualityOverlay?.addEventListener('click', e => { if (e.target === qualityOverlay
 async function startPlayback(source, quality) {
   playerOverlay.classList.remove('hidden');
   playerNotReady.classList.add('hidden');
-  if (playerLoading) playerLoading.classList.remove('hidden');
   videoPlayer.pause(); videoPlayer.removeAttribute('src'); videoPlayer.load();
   clearSubs();
   playerActive = true; currentSubtitles = source.subtitles || []; activeSubLang = ''; currentQuality = quality || 'auto';
-  currentSource = source;
 
   let url = source.videoUrl;
   if (source.qualities?.length) {
@@ -1092,7 +980,6 @@ async function startPlayback(source, quality) {
   if (!url) {
     playerNotReady.classList.remove('hidden');
     notReadyMsg.textContent = 'No video source available';
-    if (playerLoading) playerLoading.classList.add('hidden');
     return;
   }
 
@@ -1174,10 +1061,16 @@ function closePlayer() {
 }
 
 function showAutoplayModal(title, nextData) {
-  if (!autoplayModal) return;
+  console.log('showAutoplayModal called:', title, nextData);
+  if (!autoplayModal) {
+    console.error('autoplayModal is null!');
+    return;
+  }
   nextEpisodeData = nextData;
   autoplayCountdown = 5;
-  if (autoplayTitle) autoplayTitle.textContent = title;
+  if (autoplayTitle) {
+    autoplayTitle.textContent = title;
+  }
   if (autoplaySeconds) autoplaySeconds.textContent = '5';
   if (autoplayProgress) {
     autoplayProgress.style.animation = 'none';
@@ -1185,6 +1078,28 @@ function showAutoplayModal(title, nextData) {
     autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
   }
   autoplayModal.classList.remove('hidden');
+  console.log('Autoplay modal shown successfully');
+  
+  clearInterval(autoplayTimer);
+  autoplayTimer = setInterval(() => {
+    autoplayCountdown--;
+    if (autoplaySeconds) autoplaySeconds.textContent = String(autoplayCountdown);
+    if (autoplayCountdown <= 0) {
+      clearInterval(autoplayTimer);
+      playNextEpisode();
+    }
+  }, 1000);
+}
+  if (autoplaySeconds) autoplaySeconds.textContent = '5';
+  if (autoplayProgress) {
+    autoplayProgress.style.animation = 'none';
+    autoplayProgress.offsetHeight;
+    autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
+  }
+  if (autoplayModal) {
+    console.log('Showing autoplay modal');
+    autoplayModal.classList.remove('hidden');
+  }
   
   clearInterval(autoplayTimer);
   autoplayTimer = setInterval(() => {
@@ -1285,80 +1200,13 @@ function renderPlayerSettings(source) {
   }
 }
 
-function renderSettingsPanel() {
-  const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
-  
-  if (subtitleOptions) {
-    const subOptions = ['Off', ...currentSubtitles.map(s => s.label)];
-    const currentSubIndex = activeSubLang ? currentSubtitles.findIndex(s => s.language === activeSubLang) + 1 : 0;
-    subtitleOptions.innerHTML = subOptions.map((label, idx) => `
-      <button class="settings-option-btn ${idx === currentSubIndex ? 'active' : ''}" data-sub-index="${idx}">${label}</button>
-    `).join('');
-    subtitleOptions.querySelectorAll('[data-sub-index]').forEach(btn => {
-      btn.onclick = () => {
-        const idx = parseInt(btn.dataset.subIndex);
-        if (idx === 0) {
-          selectSub('');
-          if (ccIndicator) ccIndicator.classList.add('hidden');
-        } else {
-          const sub = currentSubtitles[idx - 1];
-          selectSub(sub.language);
-          if (ccIndicator) ccIndicator.classList.remove('hidden');
-        }
-        renderSettingsPanel();
-      };
-    });
-  }
-  
-  if (speedOptionsPanel) {
-    speedOptionsPanel.innerHTML = speeds.map(speed => `
-      <button class="settings-option-btn ${speed === currentPlaybackSpeed ? 'active' : ''}" data-speed-panel="${speed}">${speed}x</button>
-    `).join('');
-    speedOptionsPanel.querySelectorAll('[data-speed-panel]').forEach(btn => {
-      btn.onclick = () => {
-        currentPlaybackSpeed = parseFloat(btn.dataset.speedPanel);
-        videoPlayer.playbackRate = currentPlaybackSpeed;
-        renderSettingsPanel();
-      };
-    });
-  }
-  
-  if (qualityOptionsPanel && currentSource) {
-    const qualities = currentSource?.qualities?.length ? currentSource.qualities : [{ quality: 'auto', url: currentSource?.videoUrl }];
-    qualityOptionsPanel.innerHTML = qualities.map(q => {
-      const match = String(q.quality || '').match(/(\d{3,4})/);
-      const value = match ? match[1] : 'auto';
-      const label = match ? `${match[1]}p` : 'Auto';
-      return `<button class="settings-option-btn ${String(currentQuality) === String(value) ? 'active' : ''}" data-quality-panel="${value}">${label}</button>`;
-    }).join('');
-    qualityOptionsPanel.querySelectorAll('[data-quality-panel]').forEach(btn => {
-      btn.onclick = async () => {
-        const nextQuality = btn.dataset.qualityPanel;
-        const currentTime = videoPlayer.currentTime || 0;
-        const paused = videoPlayer.paused;
-        const previousSub = activeSubLang;
-        await startPlayback(currentSource, nextQuality);
-        const restore = () => {
-          videoPlayer.currentTime = currentTime;
-          if (previousSub) selectSub(previousSub);
-          if (paused) videoPlayer.pause();
-          videoPlayer.removeEventListener('loadedmetadata', restore);
-        };
-        videoPlayer.addEventListener('loadedmetadata', restore);
-      };
-    });
-  }
-}
-
-let currentSource = null;
-
 function resetControlsTimer() {
   if (!playerControls) return;
   playerControls.classList.remove('hidden-ui');
   if (playerTopBar) playerTopBar.classList.remove('hidden-ui');
   clearTimeout(controlsHideTimer);
   controlsHideTimer = setTimeout(() => {
-    if (!videoPlayer.paused && (!subtitleMenu?.classList.contains('hidden') || !settingsMenu?.classList.contains('hidden') || !settingsPanel?.classList.contains('hidden'))) return;
+    if (!videoPlayer.paused && (!subtitleMenu?.classList.contains('hidden') || !settingsMenu?.classList.contains('hidden'))) return;
     if (!videoPlayer.paused) {
       playerControls.classList.add('hidden-ui');
       if (playerTopBar) playerTopBar.classList.add('hidden-ui');
@@ -1510,10 +1358,7 @@ videoPlayer?.addEventListener('timeupdate', () => {
       currentSeason,
       currentEpisode
     );
-    if (playerSeek) {
-      playerSeek.value = String(progress);
-      playerSeek.style.background = `linear-gradient(to right, rgba(229,9,20,0.9) 0%, rgba(229,9,20,0.9) ${progress}%, rgba(255,255,255,0.22) ${progress}%, rgba(255,255,255,0.22) 100%)`;
-    }
+    if (playerSeek) playerSeek.value = String((videoPlayer.currentTime / videoPlayer.duration) * 100);
     if (currentTimeEl) currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
     if (durationTimeEl) durationTimeEl.textContent = formatTime(videoPlayer.duration);
   }
@@ -1523,15 +1368,6 @@ videoPlayer?.addEventListener('pause', () => { updatePlayPauseIcon(); if (player
 videoPlayer?.addEventListener('loadedmetadata', () => {
   if (durationTimeEl) durationTimeEl.textContent = formatTime(videoPlayer.duration);
   if (currentTimeEl) currentTimeEl.textContent = formatTime(videoPlayer.currentTime);
-});
-videoPlayer?.addEventListener('loadeddata', () => {
-  if (playerLoading) playerLoading.classList.add('hidden');
-});
-videoPlayer?.addEventListener('waiting', () => {
-  if (playerLoading) playerLoading.classList.remove('hidden');
-});
-videoPlayer?.addEventListener('canplay', () => {
-  if (playerLoading) playerLoading.classList.add('hidden');
 });
 videoPlayer?.addEventListener('ended', () => {
   if (pendingType === 'tv') {
@@ -1559,44 +1395,14 @@ playerSeek?.addEventListener('input', () => {
   if (!videoPlayer.duration) return;
   videoPlayer.currentTime = (parseFloat(playerSeek.value) / 100) * videoPlayer.duration;
 });
-playerSeek?.addEventListener('change', () => {
-  if (!videoPlayer.duration) return;
-  const time = (parseFloat(playerSeek.value) / 100) * videoPlayer.duration;
-  videoPlayer.currentTime = time;
-  updateContinueWatching(
-    pendingId,
-    pendingItem?.title || 'Unknown',
-    pendingItem?.cover?.url || pendingItem?.thumbnail || '',
-    pendingType,
-    (time / videoPlayer.duration) * 100,
-    videoPlayer.duration,
-    currentSeason,
-    currentEpisode
-  );
-});
 subtitleBtn?.addEventListener('click', () => {
-  settingsPanel?.classList.add('hidden');
-  if (activeSubLang) {
-    selectSub('');
-    if (ccIndicator) ccIndicator.classList.add('hidden');
-  } else {
-    if (currentSubtitles.length > 0) {
-      const firstSub = currentSubtitles[0];
-      selectSub(firstSub.language);
-      if (ccIndicator) ccIndicator.classList.remove('hidden');
-    }
-  }
+  settingsMenu?.classList.add('hidden');
+  subtitleMenu?.classList.toggle('hidden');
   resetControlsTimer();
 });
 settingsBtn?.addEventListener('click', () => {
   subtitleMenu?.classList.add('hidden');
-  settingsMenu?.classList.add('hidden');
-  renderSettingsPanel();
-  if (settingsPanel) settingsPanel.classList.remove('hidden');
-  resetControlsTimer();
-});
-settingsBackBtn?.addEventListener('click', () => {
-  if (settingsPanel) settingsPanel.classList.add('hidden');
+  settingsMenu?.classList.toggle('hidden');
   resetControlsTimer();
 });
 fullscreenBtn?.addEventListener('click', () => {
@@ -1612,62 +1418,11 @@ playerOverlay?.addEventListener('keydown', resetControlsTimer);
 document.addEventListener('fullscreenchange', updateFullscreenButton);
 document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
 document.addEventListener('click', e => {
-  if (!e.target.closest('.player-control') && !e.target.closest('.player-menu') && !e.target.closest('.player-settings-panel')) {
+  if (!e.target.closest('.player-control') && !e.target.closest('.player-menu')) {
     subtitleMenu?.classList.add('hidden');
     settingsMenu?.classList.add('hidden');
-    settingsPanel?.classList.add('hidden');
   }
 });
-
-// ===== DOUBLE TAP GESTURE =====
-function handleTapZone(zone) {
-  const now = Date.now();
-  const tapDelay = now - lastTapTime;
-  const DOUBLE_TAP_DELAY = 300;
-  
-  if (tapDelay < DOUBLE_TAP_DELAY && lastTapPosition === zone) {
-    if (zone === 'left') {
-      videoPlayer.currentTime = Math.max(0, (videoPlayer.currentTime || 0) - 10);
-      showTapFeedback('left');
-    } else if (zone === 'right') {
-      videoPlayer.currentTime = Math.min(videoPlayer.duration || Infinity, (videoPlayer.currentTime || 0) + 10);
-      showTapFeedback('right');
-    } else if (zone === 'center') {
-      if (videoPlayer.paused) videoPlayer.play().catch(() => {});
-      else videoPlayer.pause();
-    }
-    lastTapTime = 0;
-  } else {
-    lastTapTime = now;
-    lastTapPosition = zone;
-  }
-  resetControlsTimer();
-}
-
-function showTapFeedback(zone) {
-  const feedback = document.createElement('div');
-  feedback.className = 'tap-feedback';
-  feedback.innerHTML = zone === 'left' 
-    ? '<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>'
-    : '<svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>';
-  feedback.style.cssText = `
-    position: absolute;
-    top: 50%;
-    ${zone === 'left' ? 'left: 25%' : 'right: 25%'};
-    transform: translateY(-50%);
-    color: #fff;
-    opacity: 0.9;
-    animation: tapPop 0.4s ease-out;
-    pointer-events: none;
-    z-index: 30;
-  `;
-  playerOverlay.appendChild(feedback);
-  setTimeout(() => feedback.remove(), 400);
-}
-
-tapZoneLeft?.addEventListener('click', () => handleTapZone('left'));
-tapZoneCenter?.addEventListener('click', () => handleTapZone('center'));
-tapZoneRight?.addEventListener('click', () => handleTapZone('right'));
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -1676,66 +1431,6 @@ document.addEventListener('keydown', e => {
     else if (!searchOverlay.classList.contains('hidden')) closeSearchOverlay();
     else if (!modalOverlay.classList.contains('hidden')) closeModal();
   }
-});
-
-// ===== PROFILE =====
-const PROFILE_KEY = 'zynflix-profile-v1';
-
-function loadProfile() {
-  try {
-    return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null;
-  } catch { return null; }
-}
-
-function saveProfile(profile) {
-  try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  } catch {}
-}
-
-let currentProfile = loadProfile();
-
-function updateProfileUI() {
-  if (!profileLogin || !profileInfo) return;
-  
-  if (currentProfile) {
-    profileLogin.classList.add('hidden');
-    profileInfo.classList.remove('hidden');
-    if (profileName) profileName.textContent = currentProfile.name || 'User';
-    if (profileEmail) profileEmail.textContent = currentProfile.email || '';
-    if (statDownloads) statDownloads.textContent = downloads.length;
-    if (statContinue) statContinue.textContent = continueWatching.length;
-    if (statList) statList.textContent = mylist.length;
-  } else {
-    profileLogin.classList.remove('hidden');
-    profileInfo.classList.add('hidden');
-  }
-}
-
-profileSigninBtn?.addEventListener('click', () => {
-  const name = prompt('Enter your name:', 'User');
-  if (!name) return;
-  const email = prompt('Enter your email:', 'user@example.com');
-  currentProfile = { name, email: email || '', createdAt: Date.now() };
-  saveProfile(currentProfile);
-  updateProfileUI();
-});
-
-profileSignoutBtn?.addEventListener('click', () => {
-  currentProfile = null;
-  localStorage.removeItem(PROFILE_KEY);
-  updateProfileUI();
-});
-
-document.querySelectorAll('.profile-setting-item').forEach(btn => {
-  btn.onclick = () => {
-    const toggle = btn.querySelector('.setting-toggle');
-    if (!toggle) return;
-    const isActive = toggle.dataset.active === 'true';
-    toggle.dataset.active = !isActive;
-    toggle.textContent = isActive ? 'Off' : 'On';
-    toggle.classList.toggle('active', !isActive);
-  };
 });
 
 // ===== SERVICE WORKER =====

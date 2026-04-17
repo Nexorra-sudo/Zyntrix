@@ -1195,44 +1195,6 @@ img { display: block; max-width: 100%; }
   object-fit: contain;
 }
 
-.player-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.85);
-  z-index: 20;
-  gap: 16px;
-}
-
-.player-loading.hidden {
-  display: none;
-}
-
-.loading-text {
-  color: #fff;
-  font-size: 0.95rem;
-  opacity: 0.8;
-}
-
-.player-tap-zones {
-  position: absolute;
-  inset: 0;
-  z-index: 15;
-  display: flex;
-}
-
-.player-tap-zone {
-  flex: 1;
-  cursor: pointer;
-}
-
-.player-tap-zone:active {
-  background: rgba(255,255,255,0.05);
-}
-
 .player-controls {
   position: absolute;
   inset: 0;
@@ -1285,9 +1247,8 @@ img { display: block; max-width: 100%; }
   appearance: none;
   height: 4px;
   border-radius: 999px;
-  background: linear-gradient(to right, rgba(229,9,20,0.9) 0%, rgba(229,9,20,0.9) 0%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.22) 100%);
+  background: rgba(255,255,255,0.22);
   outline: none;
-  cursor: pointer;
 }
 
 .player-seekbar::-webkit-slider-thumb {
@@ -1297,105 +1258,6 @@ img { display: block; max-width: 100%; }
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(255,255,255,0.2);
-  cursor: pointer;
-}
-
-.player-seekbar::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 999px;
-}
-
-.player-cc-indicator {
-  position: absolute;
-  bottom: 120px;
-  left: 22px;
-  padding: 6px 10px;
-  background: rgba(0,0,0,0.7);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 0.75rem;
-  z-index: 25;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.player-cc-indicator.hidden {
-  display: none;
-}
-
-.player-settings-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 70vh;
-  background: rgba(18,18,18,0.98);
-  border-radius: 20px 20px 0 0;
-  z-index: 30;
-  overflow: hidden;
-}
-
-.player-settings-panel.hidden {
-  display: none;
-}
-
-.settings-panel-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  border-bottom: 1px solid #333;
-}
-
-.settings-back-btn {
-  background: none;
-  border: none;
-  color: #fff;
-  padding: 6px;
-  cursor: pointer;
-}
-
-.settings-panel-content {
-  padding: 20px;
-  max-height: calc(70vh - 60px);
-  overflow-y: auto;
-}
-
-.settings-group {
-  margin-bottom: 24px;
-}
-
-.settings-label {
-  font-size: 0.8rem;
-  color: #777;
-  text-transform: uppercase;
-  margin-bottom: 12px;
-}
-
-.settings-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.settings-option-btn {
-  padding: 10px 18px;
-  background: #2a2a2a;
-  border: none;
-  border-radius: 20px;
-  color: #999;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.settings-option-btn:hover {
-  background: #333;
-}
-
-.settings-option-btn.active {
-  background: #e50914;
-  color: #fff;
 }
 
 .player-action-row {
@@ -1435,13 +1297,13 @@ img { display: block; max-width: 100%; }
 }
 
 .player-play-main {
-  background: transparent;
-  color: #fff;
+  background: rgba(255,255,255,0.96);
+  color: #111;
   border-color: transparent;
 }
 
 .player-play-main:hover {
-  background: rgba(255,255,255,0.15);
+  background: #fff;
   transform: scale(1.04);
 }
 
@@ -1686,12 +1548,6 @@ img { display: block; max-width: 100%; }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-@keyframes tapPop {
-  0% { opacity: 0; transform: translateY(-50%) scale(0.5); }
-  50% { opacity: 1; transform: translateY(-50%) scale(1.1); }
-  100% { opacity: 0; transform: translateY(-50%) scale(1); }
 }
 
 /* ============================================
@@ -2303,166 +2159,6 @@ img { display: block; max-width: 100%; }
   color: #555;
   margin-top: 6px;
   display: block;
-}
-
-.profile-body {
-  padding: 28px 20px 96px;
-}
-
-.profile-login {
-  text-align: center;
-  padding: 60px 20px;
-}
-
-.profile-avatar {
-  width: 100px;
-  height: 100px;
-  margin: 0 auto 24px;
-  background: #222;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #555;
-}
-
-.profile-login h3 {
-  font-size: 1.4rem;
-  color: #fff;
-  margin-bottom: 12px;
-}
-
-.profile-login p {
-  color: #777;
-  margin-bottom: 28px;
-  line-height: 1.5;
-}
-
-.profile-signin-btn {
-  background: #e50914;
-  color: #fff;
-  border: none;
-  padding: 14px 36px;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.profile-signin-btn:hover {
-  background: #f40612;
-}
-
-.profile-info {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.profile-avatar-lg {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 20px;
-  background: #222;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #555;
-}
-
-.profile-info h3 {
-  font-size: 1.5rem;
-  color: #fff;
-  margin-bottom: 6px;
-}
-
-.profile-info p {
-  color: #777;
-  margin-bottom: 30px;
-}
-
-.profile-stats {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  margin-bottom: 30px;
-}
-
-.profile-stat {
-  text-align: center;
-}
-
-.stat-value {
-  display: block;
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.stat-label {
-  font-size: 0.8rem;
-  color: #777;
-  text-transform: uppercase;
-}
-
-.profile-signout-btn {
-  background: transparent;
-  color: #999;
-  border: 1px solid #333;
-  padding: 12px 28px;
-  font-size: 0.95rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.profile-signout-btn:hover {
-  color: #fff;
-  border-color: #555;
-}
-
-.profile-settings-section {
-  margin-top: 30px;
-  text-align: left;
-}
-
-.profile-settings-section h4 {
-  font-size: 0.85rem;
-  color: #777;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-  padding-left: 4px;
-}
-
-.profile-settings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.profile-setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: #1a1a1a;
-  border: none;
-  color: #fff;
-  font-size: 0.95rem;
-  cursor: pointer;
-  border-radius: 6px;
-}
-
-.profile-setting-item:hover {
-  background: #252525;
-}
-
-.setting-toggle {
-  font-size: 0.85rem;
-  color: #777;
-}
-
-.setting-toggle.active {
-  color: #46d369;
 }
 
 /* ============================================
