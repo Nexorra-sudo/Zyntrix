@@ -6,7 +6,6 @@
 const CV_API = '/api/cv';
 const CV_HEADERS = { 'Accept': 'application/json' };
 const DAVID_API = 'https://moviebox.davidcyril.name.ng/api';
-const DAVID_HOME_API = 'https://apis.davidcyril.name.ng/flixzone/home';
 const MYLIST_KEY = 'zynflix-list-v2';
 const INTRO_KEY = 'zynflix-intro';
 const SEARCH_KEY = 'zynflix-search-v1';
@@ -16,9 +15,16 @@ const VERSION = Date.now();
 // ===== DAVID API HELPERS =====
 async function fetchDavidHome() {
   try {
-    const res = await fetch(DAVID_HOME_API, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(`${DAVID_API}/homepage`, { headers: { 'Accept': 'application/json' } });
     return await res.json();
   } catch (e) { console.warn('David Home API error:', e); return null; }
+}
+
+async function fetchDavidTrending() {
+  try {
+    const res = await fetch(`${DAVID_API}/trending`, { headers: { 'Accept': 'application/json' } });
+    return await res.json();
+  } catch (e) { console.warn('David Trending API error:', e); return null; }
 }
 
 async function fetchDavidInfo(id) {
@@ -28,11 +34,11 @@ async function fetchDavidInfo(id) {
   } catch (e) { console.warn('David Info API error:', e); return null; }
 }
 
-async function fetchDavidWatch(id) {
+async function fetchDavidSources(id) {
   try {
-    const res = await fetch(`${DAVID_API}/watch/${id}`, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(`${DAVID_API}/sources/${id}`, { headers: { 'Accept': 'application/json' } });
     return await res.json();
-  } catch (e) { console.warn('David Watch API error:', e); return null; }
+  } catch (e) { console.warn('David Sources API error:', e); return null; }
 }
 
 // ===== STATE =====
@@ -526,17 +532,23 @@ async function fetchSource(id, type) {
   let qualities = [];
 
   // Use David's API for streaming
-  const davidData = await fetchDavidWatch(id);
-  if (davidData?.data?.streams && davidData.data.streams.length > 0) {
-    videoUrl = davidData.data.streams[0].url;
-    qualities = davidData.data.streams.map(s => ({
-      quality: s.quality || 'Auto',
-      url: s.url
-    }));
-    const imdbId = davidData?.data?.imdb_id;
-    if (imdbId) {
-      const subData = await fetchSubtitles(imdbId);
-      if (subData.length) subtitles = subData;
+  const davidData = await fetchDavidSources(id);
+  if (davidData?.data) {
+    const d = davidData.data;
+    if (d.processedSources?.[0]) {
+      videoUrl = d.processedSources[0].downloadUrl || d.processedSources[0].directUrl;
+      qualities = d.processedSources.map(s => ({
+        quality: s.quality || 'Auto',
+        url: s.downloadUrl || s.directUrl
+      }));
+    } else if (d.downloads?.[0]) {
+      videoUrl = d.downloads[0].url;
+      qualities = d.downloads.map(dl => ({
+        quality: dl.quality || 'Auto',
+        url: dl.url
+      }));
+    } else if (d.url) {
+      videoUrl = d.url;
     }
   }
 
@@ -1121,12 +1133,18 @@ init().catch(() => {});
 // ===== HERO BANNER =====
 async function loadHero() {
   try {
-    const homeData = await fetchDavidHome();
-    if (homeData?.trending?.length) {
-      heroItems = homeData.trending.slice(0, 5);
-      updateHero();
-    } else if (homeData?.hero) {
-      heroItems = [homeData.hero];
+    // Try trending endpoint first
+    let trendingData = await fetchDavidTrending();
+    let items = trendingData?.data || trendingData?.results || [];
+    
+    // Fallback to homepage if trending is empty
+    if (!items.length) {
+      const homeData = await fetchDavidHome();
+      items = homeData?.data?.trending || homeData?.trending || [];
+    }
+    
+    if (items.length) {
+      heroItems = items.slice(0, 5);
       updateHero();
     }
   } catch (e) { console.warn('Hero error:', e); }
@@ -1309,14 +1327,26 @@ async function loadHome() {
   rowsContainer.innerHTML = '<div style="display:flex;justify-content:center;padding:60px 0;"><div class="loading-spinner large"></div></div>';
   
   try {
-    const homeData = await fetchDavidHome();
-    if (!homeData) { rowsContainer.innerHTML = ''; return; }
+    // Try homepage first
+    let homeData = await fetchDavidHome();
+    let items = homeData?.data || homeData?.results || [];
+    
+    // If homepage is empty, try trending
+    if (!items.length) {
+      const trendingData = await fetchDavidTrending();
+      items = trendingData?.data || trendingData?.results || [];
+    }
+    
+    if (!items.length) { 
+      rowsContainer.innerHTML = '<div class="no-results">No content available</div>'; 
+      return; 
+    }
     
     const rows = [];
     
     // Trending/Top 10
-    if (homeData.trending?.length) {
-      rows.push({ title: 'Top 10', items: homeData.trending.slice(0, 10), isTop10: true });
+    if (items.length >= 10) {
+      rows.push({ title: 'Top 10', items: items.slice(0, 10), isTop10: true });
     }
     
     // Continue Watching
@@ -1327,26 +1357,11 @@ async function loadHome() {
       }
     }
     
-    // Categories from API
-    const categoryMap = {
-      'popular': 'Popular',
-      'trending': 'Trending Now',
-      'action': 'Action Movies',
-      'comedy': 'Comedy',
-      'horror': 'Horror',
-      'drama': 'Drama',
-      'romance': 'Romance',
-      'sci-fi': 'Sci-Fi',
-      'thriller': 'Thriller',
-      'animation': 'Animation',
-      'nollywood': 'Nollywood'
-    };
-    
-    for (const [key, label] of Object.entries(categoryMap)) {
-      const items = homeData[key] || homeData[key.trim()] || [];
-      if (items.length) {
-        rows.push({ title: label, items: items.slice(0, 12) });
-      }
+    // Add remaining items as "Popular"
+    if (items.length > 10) {
+      rows.push({ title: 'Popular Movies', items: items.slice(10) });
+    } else if (items.length > 0) {
+      rows.push({ title: 'Popular Movies', items: items });
     }
     
     if (rows.length) {
