@@ -1153,13 +1153,15 @@ async function loadHero() {
 function updateHero() {
   if (!heroItems.length) return;
   const item = heroItems[heroIdx];
-  if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(${item.backdrop || item.thumbnail || ''})`;
+  const id = item.subjectId || item.id;
+  const type = item.subjectType === 2 ? 'tv' : (item.type || 'movie');
+  if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(${item.backdrop || item.thumbnail || item.poster || ''})`;
   if (heroTitle) heroTitle.textContent = item.title || '';
-  if (heroOverview) heroOverview.textContent = item.overview || '';
-  if (heroBadge) heroBadge.textContent = item.genre || 'Featured';
+  if (heroOverview) heroOverview.textContent = item.overview || item.description || '';
+  if (heroBadge) heroBadge.textContent = item.genre || item.category?.[0] || 'Featured';
   if (heroMeta) heroMeta.innerHTML = item.rating ? `<span class="meta-imdb">★ ${item.rating}</span>` : '';
-  if (heroPlay) heroPlay.onclick = () => showQualityPicker(item.id, item.type || 'movie', item);
-  if (heroInfo) heroInfo.onclick = () => openModal(item.id, item.type || 'movie');
+  if (heroPlay) heroPlay.onclick = () => showQualityPicker(id, type, item);
+  if (heroInfo) heroInfo.onclick = () => openModal(id, type);
 }
 
 function startHeroRotation() {
@@ -1176,12 +1178,12 @@ function stopHeroRotation() {
 
 // ===== BUILD POSTER CARD =====
 function buildCard(item) {
-  const id = item.id;
+  const id = item.subjectId || item.id;
   const title = item.title || 'Unknown';
-  const poster = item.poster || item.thumbnail || item.image || '';
-  const year = item.year || '';
-  const rating = item.rating || item.score || '';
-  const type = item.type || 'movie';
+  const poster = item.poster || item.thumbnail || item.image || item.cover?.url || '';
+  const year = item.year || getYear(item.releaseDate);
+  const rating = item.rating || item.score || item.imdb_rating || '';
+  const type = item.subjectType === 2 ? 'tv' : (item.type || 'movie');
   const isSeries = type === 'tv';
   const inList = isInList(id);
   
@@ -1231,10 +1233,10 @@ function buildRow(title, items, isContinue, isTop10) {
 }
 
 function buildTop10Card(item, rank) {
-  const id = item.id;
+  const id = item.subjectId || item.id;
   const title = item.title || item.name || 'Unknown';
-  const poster = item.poster || item.thumbnail || item.image || '';
-  const type = item.type || 'movie';
+  const poster = item.poster || item.thumbnail || item.image || item.cover?.url || '';
+  const type = item.subjectType === 2 ? 'tv' : (item.type || 'movie');
   return `<div class="poster-card top-10-card" data-id="${id}" data-type="${type}">
     <div class="top-10-rank">${rank}</div>
     <img src="${poster}" alt="${title}" loading="lazy" onerror="this.style.background='#222'" />
@@ -1245,11 +1247,11 @@ function buildTop10Card(item, rank) {
 }
 
 function buildContinueCard(item) {
-  const id = item.id;
+  const id = item.subjectId || item.id;
   const title = item.title || 'Unknown';
-  const poster = item.poster || item.thumbnail || item.image || '';
+  const poster = item.poster || item.thumbnail || item.image || item.cover?.url || '';
   const progress = item.progress || 0;
-  const type = item.type || 'movie';
+  const type = item.subjectType === 2 ? 'tv' : (item.type || 'movie');
   const remaining = Math.round((100 - progress) / 100 * (item.duration || 0) / 60);
 
   return `
