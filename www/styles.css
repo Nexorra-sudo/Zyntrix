@@ -166,6 +166,14 @@ img { display: block; max-width: 100%; }
   100% { width: 100%; }
 }
 
+.intro-loader-bar.loaded::after {
+  animation-fill-mode: forwards;
+}
+
+.intro-loader-bar.loaded {
+  --loaded: true;
+}
+
 /* ============================================
    NAVBAR
    ============================================ */
