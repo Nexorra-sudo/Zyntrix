@@ -5,11 +5,35 @@
 // ===== CONFIG =====
 const CV_API = '/api/cv';
 const CV_HEADERS = { 'Accept': 'application/json' };
+const DAVID_API = 'https://moviebox.davidcyril.name.ng/api';
+const DAVID_HOME_API = 'https://apis.davidcyril.name.ng/flixzone/home';
 const MYLIST_KEY = 'zynflix-list-v2';
 const INTRO_KEY = 'zynflix-intro';
 const SEARCH_KEY = 'zynflix-search-v1';
 const DOWNLOADS_KEY = 'zynflix-downloads-v1';
 const VERSION = Date.now();
+
+// ===== DAVID API HELPERS =====
+async function fetchDavidHome() {
+  try {
+    const res = await fetch(DAVID_HOME_API, { headers: { 'Accept': 'application/json' } });
+    return await res.json();
+  } catch (e) { console.warn('David Home API error:', e); return null; }
+}
+
+async function fetchDavidInfo(id) {
+  try {
+    const res = await fetch(`${DAVID_API}/info/${id}`, { headers: { 'Accept': 'application/json' } });
+    return await res.json();
+  } catch (e) { console.warn('David Info API error:', e); return null; }
+}
+
+async function fetchDavidWatch(id) {
+  try {
+    const res = await fetch(`${DAVID_API}/watch/${id}`, { headers: { 'Accept': 'application/json' } });
+    return await res.json();
+  } catch (e) { console.warn('David Watch API error:', e); return null; }
+}
 
 // ===== STATE =====
 let heroTimer = null;
@@ -309,7 +333,17 @@ async function openModal(id, type) {
   similarGrid.innerHTML = '';
   castGrid.innerHTML = '';
 
-  const details = await cvInfo(id);
+  // Try David's API first for movie info
+  let details = await cvInfo(id);
+  const davidData = await fetchDavidInfo(id);
+  
+  if (davidData?.data) {
+    const d = davidData.data;
+    if (d.title) {
+      details = { ...details, ...d };
+    }
+  }
+
   if (!details) {
     modalTitle.textContent = 'Details unavailable';
     return;
@@ -317,14 +351,14 @@ async function openModal(id, type) {
 
   currentMovie = { ...details, id };
   const title = details.title || 'Unknown';
-  const year = getYear(details.releaseDate);
-  const rating = details.rating || '';
-  const isSeries = details.subjectType === 2;
-  const desc = details.description || details.overview || '';
-  const genres = details.genres || [];
-  const duration = details.duration || details.runtime || '';
-  const cast = details.casts || details.cast || [];
-  const bg = details.cover?.url || details.thumbnail || '';
+  const year = details.year || getYear(details.releaseDate);
+  const rating = details.rating || details.imdb_rating || details.score || '';
+  const isSeries = type === 'tv' || details.type === 'tv' || details.subjectType === 2;
+  const desc = details.description || details.overview || details.synopsis || '';
+  const genres = details.genres || details.category || [];
+  const duration = details.runtime || details.duration || details.runtime_minutes || '';
+  const cast = details.cast || details.actors || details.credits || [];
+  const bg = details.poster || details.thumbnail || details.cover?.url || details.image || '';
 
   if (bg) modalBackdrop.style.backgroundImage = `url(${bg})`;
   modalTitle.textContent = title;
@@ -359,7 +393,7 @@ async function openModal(id, type) {
   // Download
   modalDownload.onclick = () => showDownloadPicker(id, isSeries ? 'tv' : 'movie', details);
 
-  // Watchlist (Add to List button inside modal)
+  // Watchlist
   modalAddList.dataset.listId = id;
   modalAddList.classList.toggle('in-list', isInList(id));
   modalAddList.onclick = () => {
@@ -491,28 +525,20 @@ async function fetchSource(id, type) {
   let subtitles = [];
   let qualities = [];
 
-  // Directly use David's API for streaming
-  try {
-    const davidRes = await fetch(`${DAVID_API}/watch/${id}`, { 
-      headers: { 'Accept': 'application/json' } 
-    });
-    const davidData = await davidRes.json();
-    
-    if (davidData?.data?.streams && davidData.data.streams.length > 0) {
-      videoUrl = davidData.data.streams[0].url;
-      qualities = davidData.data.streams.map(s => ({
-        quality: s.quality || 'Auto',
-        url: s.url
-      }));
-    }
-    
-    // Get IMDb ID for subtitles
+  // Use David's API for streaming
+  const davidData = await fetchDavidWatch(id);
+  if (davidData?.data?.streams && davidData.data.streams.length > 0) {
+    videoUrl = davidData.data.streams[0].url;
+    qualities = davidData.data.streams.map(s => ({
+      quality: s.quality || 'Auto',
+      url: s.url
+    }));
     const imdbId = davidData?.data?.imdb_id;
     if (imdbId) {
       const subData = await fetchSubtitles(imdbId);
       if (subData.length) subtitles = subData;
     }
-  } catch (e) { console.warn('David API error:', e); }
+  }
 
   // Fallback to CV_API if David fails
   if (!videoUrl) {
@@ -1091,16 +1117,6 @@ async function init() {
 // Auto-start
 if (app) app.style.display = 'block';
 init().catch(() => {});
-
-// ===== DAVID HOME API =====
-const DAVID_HOME_API = 'https://apis.davidcyril.name.ng/flixzone/home';
-
-async function fetchDavidHome() {
-  try {
-    const res = await fetch(DAVID_HOME_API, { headers: { 'Accept': 'application/json' } });
-    return await res.json();
-  } catch (e) { console.warn('David Home API error:', e); return null; }
-}
 
 // ===== HERO BANNER =====
 async function loadHero() {
