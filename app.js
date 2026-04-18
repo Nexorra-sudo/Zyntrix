@@ -41,6 +41,13 @@ async function fetchDavidSources(id) {
   } catch (e) { console.warn('David Sources API error:', e); return null; }
 }
 
+async function fetchDavidSearch(query) {
+  try {
+    const res = await fetch(`${DAVID_API}/search/${encodeURIComponent(query)}`, { headers: { 'Accept': 'application/json' } });
+    return await res.json();
+  } catch (e) { console.warn('David Search API error:', e); return null; }
+}
+
 // ===== STATE =====
 let heroTimer = null;
 let heroItems = [];
@@ -264,25 +271,23 @@ async function cvFetch(url) {
 }
 
 async function cvSearch(query) {
-  const data = await cvFetch(`${CV_API}/search/${encodeURIComponent(query)}`);
-  return data?.data?.items || [];
+  const data = await fetchDavidSearch(query);
+  return data?.data?.results || data?.data?.items || [];
 }
 
 async function cvPopular() {
-  const data = await cvFetch(`${CV_API}/search/popular`);
-  return data?.data?.items || [];
+  const data = await fetchDavidTrending();
+  return data?.data || data?.results || [];
 }
 
 async function cvInfo(subjectId) {
-  const data = await cvFetch(`${CV_API}/info/${subjectId}`);
-  return data?.data?.subject || data?.data || null;
+  const data = await fetchDavidInfo(subjectId);
+  return data?.data || null;
 }
 
 async function cvSources(subjectId, season, episode) {
-  let url = `${CV_API}/sources/${subjectId}`;
-  if (season && episode) url += `?season=${season}&episode=${episode}`;
-  const data = await cvFetch(url);
-  return data?.data || data || null;
+  const data = await fetchDavidSources(subjectId);
+  return data?.data || null;
 }
 
 // ===== IMAGE HELPERS =====
@@ -339,15 +344,12 @@ async function openModal(id, type) {
   similarGrid.innerHTML = '';
   castGrid.innerHTML = '';
 
-  // Try David's API first for movie info
-  let details = await cvInfo(id);
+  // Use ONLY David's API for movie info
   const davidData = await fetchDavidInfo(id);
+  let details = null;
   
   if (davidData?.data) {
-    const d = davidData.data;
-    if (d.title) {
-      details = { ...details, ...d };
-    }
+    details = davidData.data;
   }
 
   if (!details) {
@@ -531,7 +533,7 @@ async function fetchSource(id, type) {
   let subtitles = [];
   let qualities = [];
 
-  // Use David's API for streaming
+  // Use ONLY David's API for streaming
   const davidData = await fetchDavidSources(id);
   if (davidData?.data) {
     const d = davidData.data;
@@ -552,38 +554,9 @@ async function fetchSource(id, type) {
     }
   }
 
-  // Fallback to CV_API if David fails
+  // NO FALLBACK - Only David API
   if (!videoUrl) {
-    try {
-      let sourceUrl = `${CV_API}/sources/${id}`;
-      if (type === 'tv') sourceUrl += `?season=${s}&episode=${e}`;
-      const srcRes = await cvFetch(sourceUrl);
-      const srcData = srcRes?.data || srcRes;
-      if (srcData) {
-        if (srcData.processedSources?.[0]) {
-          videoUrl = srcData.processedSources[0].streamUrl || srcData.processedSources[0].directUrl;
-          qualities = srcData.processedSources.map(s => ({
-            quality: s.quality || 'Auto',
-            url: s.streamUrl || s.directUrl || s.downloadUrl
-          }));
-        } else if (srcData.downloads?.[0]) {
-          videoUrl = srcData.downloads[0].url;
-          qualities = srcData.downloads.map(d => ({
-            quality: d.resolution || d.quality || 'Auto',
-            url: d.url
-          }));
-        } else if (srcData.url) {
-          videoUrl = srcData.url;
-        }
-        if (srcData.captions?.length) {
-          subtitles = srcData.captions.map((st, i) => ({
-            label: st.lanName || st.lan || `Sub ${i+1}`,
-            language: st.lan || `s${i}`,
-            url: st.url || ''
-          }));
-        }
-      }
-    } catch (e) { console.warn('CV API error:', e); }
+    console.warn('No streaming source found for ID:', id);
   }
 
   return { videoUrl, subtitles, qualities };
@@ -1133,15 +1106,9 @@ init().catch(() => {});
 // ===== HERO BANNER =====
 async function loadHero() {
   try {
-    // Try trending endpoint first
-    let trendingData = await fetchDavidTrending();
-    let items = trendingData?.data || trendingData?.results || [];
-    
-    // Fallback to homepage if trending is empty
-    if (!items.length) {
-      const homeData = await fetchDavidHome();
-      items = homeData?.data?.trending || homeData?.trending || [];
-    }
+    const homeData = await fetchDavidHome();
+    const data = homeData?.data || {};
+    let items = data.trending || data.featured || data.popular || [];
     
     if (items.length) {
       heroItems = items.slice(0, 5);
@@ -1329,26 +1296,27 @@ async function loadHome() {
   rowsContainer.innerHTML = '<div style="display:flex;justify-content:center;padding:60px 0;"><div class="loading-spinner large"></div></div>';
   
   try {
-    // Try homepage first
-    let homeData = await fetchDavidHome();
-    let items = homeData?.data || homeData?.results || [];
-    
-    // If homepage is empty, try trending
-    if (!items.length) {
-      const trendingData = await fetchDavidTrending();
-      items = trendingData?.data || trendingData?.results || [];
-    }
-    
-    if (!items.length) { 
-      rowsContainer.innerHTML = '<div class="no-results">No content available</div>'; 
-      return; 
-    }
+    // Use homepage endpoint
+    const homeData = await fetchDavidHome();
+    const data = homeData?.data || {};
     
     const rows = [];
     
+    // Get all movies from homepage data
+    const allItems = [];
+    Object.keys(data).forEach(key => {
+      if (Array.isArray(data[key])) {
+        data[key].forEach(item => {
+          if (!allItems.find(i => i.subjectId === item.subjectId)) {
+            allItems.push(item);
+          }
+        });
+      }
+    });
+    
     // Trending/Top 10
-    if (items.length >= 10) {
-      rows.push({ title: 'Top 10', items: items.slice(0, 10), isTop10: true });
+    if (data.trending?.length) {
+      rows.push({ title: 'Top 10', items: data.trending.slice(0, 10), isTop10: true });
     }
     
     // Continue Watching
@@ -1359,12 +1327,13 @@ async function loadHome() {
       }
     }
     
-    // Add remaining items as "Popular"
-    if (items.length > 10) {
-      rows.push({ title: 'Popular Movies', items: items.slice(10) });
-    } else if (items.length > 0) {
-      rows.push({ title: 'Popular Movies', items: items });
-    }
+    // Add categories from homepage
+    Object.keys(data).forEach(key => {
+      if (key !== 'trending' && Array.isArray(data[key]) && data[key].length > 0) {
+        const title = key.charAt(0).toUpperCase() + key.slice(1).replace(/-/g, ' ');
+        rows.push({ title, items: data[key].slice(0, 12) });
+      }
+    });
     
     if (rows.length) {
       rowsContainer.innerHTML = rows.map(r => buildRow(r.title, r.items, r.isContinue, r.isTop10)).join('');
