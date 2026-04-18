@@ -287,20 +287,8 @@ function initIntro() {
 if (intro) {
   initIntro();
 } else {
-        showQualityPicker(item.id, item.type || 'movie', pendingItem);
-      }
-    };
-  });
-  downloadsGrid.querySelectorAll('[data-download-open]').forEach(btn => {
-    btn.onclick = () => openModal(btn.dataset.downloadOpen, btn.dataset.downloadType || 'movie');
-  });
-  downloadsGrid.querySelectorAll('[data-download-remove]').forEach(btn => {
-    btn.onclick = () => {
-      downloads = downloads.filter(d => d.key !== btn.dataset.downloadRemove);
-      saveDownloads();
-      renderDownloads();
-    };
-  });
+  if (app) app.style.display = 'block';
+  init().catch(() => {});
 }
 
 // ===== MOVIE MODAL =====
@@ -762,27 +750,6 @@ function showAutoplayModal(title, nextData) {
     }
   }, 1000);
 }
-  if (autoplaySeconds) autoplaySeconds.textContent = '5';
-  if (autoplayProgress) {
-    autoplayProgress.style.animation = 'none';
-    autoplayProgress.offsetHeight;
-    autoplayProgress.style.animation = 'countdownSpin 5s linear forwards';
-  }
-  if (autoplayModal) {
-    console.log('Showing autoplay modal');
-    autoplayModal.classList.remove('hidden');
-  }
-  
-  clearInterval(autoplayTimer);
-  autoplayTimer = setInterval(() => {
-    autoplayCountdown--;
-    if (autoplaySeconds) autoplaySeconds.textContent = String(autoplayCountdown);
-    if (autoplayCountdown <= 0) {
-      clearInterval(autoplayTimer);
-      playNextEpisode();
-    }
-  }, 1000);
-}
 
 function cancelAutoplay() {
   clearInterval(autoplayTimer);
@@ -1122,9 +1089,260 @@ async function init() {
 }
 
 // Auto-start
-if (intro) {
-  setTimeout(() => playIntro(), 2200);
-} else {
-  if (app) app.style.display = 'block';
-  init().catch(() => {});
+if (app) app.style.display = 'block';
+init().catch(() => {});
+
+// ===== DAVID HOME API =====
+const DAVID_HOME_API = 'https://apis.davidcyril.name.ng/flixzone/home';
+
+async function fetchDavidHome() {
+  try {
+    const res = await fetch(DAVID_HOME_API, { headers: { 'Accept': 'application/json' } });
+    return await res.json();
+  } catch (e) { console.warn('David Home API error:', e); return null; }
+}
+
+// ===== HERO BANNER =====
+async function loadHero() {
+  try {
+    const homeData = await fetchDavidHome();
+    if (homeData?.trending?.length) {
+      heroItems = homeData.trending.slice(0, 5);
+      updateHero();
+    } else if (homeData?.hero) {
+      heroItems = [homeData.hero];
+      updateHero();
+    }
+  } catch (e) { console.warn('Hero error:', e); }
+}
+
+function updateHero() {
+  if (!heroItems.length) return;
+  const item = heroItems[heroIdx];
+  if (heroBackdrop) heroBackdrop.style.backgroundImage = `url(${item.backdrop || item.thumbnail || ''})`;
+  if (heroTitle) heroTitle.textContent = item.title || '';
+  if (heroOverview) heroOverview.textContent = item.overview || '';
+  if (heroBadge) heroBadge.textContent = item.genre || 'Featured';
+  if (heroMeta) heroMeta.innerHTML = item.rating ? `<span class="meta-imdb">★ ${item.rating}</span>` : '';
+  if (heroPlay) heroPlay.onclick = () => showQualityPicker(item.id, item.type || 'movie', item);
+  if (heroInfo) heroInfo.onclick = () => openModal(item.id, item.type || 'movie');
+}
+
+function startHeroRotation() {
+  stopHeroRotation();
+  heroTimer = setInterval(() => {
+    heroIdx = (heroIdx + 1) % heroItems.length;
+    updateHero();
+  }, 6000);
+}
+
+function stopHeroRotation() {
+  if (heroTimer) { clearInterval(heroTimer); heroTimer = null; }
+}
+
+// ===== BUILD POSTER CARD =====
+function buildCard(item) {
+  const id = item.id;
+  const title = item.title || 'Unknown';
+  const poster = item.poster || item.thumbnail || item.image || '';
+  const year = item.year || '';
+  const rating = item.rating || item.score || '';
+  const type = item.type || 'movie';
+  const isSeries = type === 'tv';
+  const inList = isInList(id);
+  
+  return `
+    <div class="poster-card" data-id="${id}" data-type="${type}">
+      <img src="${poster}" alt="${title}" loading="lazy" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 450%22 fill=%22%23222%22%3E%3Crect width=%22300%22 height=%22450%22/%3E%3Ctext x=%22150%22 y=%22225%22 text-anchor=%22middle%22 fill=%22%23555%22 font-size=%2216%22%3ENo Image%3C/text%3E%3C/svg%3E'" />
+      <div class="poster-overlay">
+        <div class="poster-title">${title}</div>
+        <div class="poster-meta">
+          ${rating ? `<span class="match">★ ${rating}</span>` : ''}
+          ${year ? `<span class="year">${year}</span>` : ''}
+          <span class="rating-badge">${isSeries ? 'TV' : 'Movie'}</span>
+        </div>
+        <div class="poster-actions">
+          <button class="poster-action-btn play-btn" data-play-id="${id}" data-play-type="${type}" title="Play">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          </button>
+          <button class="poster-action-btn ${inList ? 'in-list' : ''}" data-list-id="${id}" data-list-title="${title}" data-list-poster="${poster}" data-list-type="${type}" title="My List">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              ${inList ? '<polyline points="20 6 9 17 4 12"/>' : '<path d="M12 5v14"/><path d="M5 12h14"/>'}
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildRow(title, items, isContinue, isTop10) {
+  if (!items.length) return '';
+  const rowClass = isTop10 ? 'movie-row top-10-row' : (isContinue ? 'movie-row continue-row' : 'movie-row');
+  let itemsHtml;
+  if (isContinue) {
+    itemsHtml = items.map(buildContinueCard).join('');
+  } else if (isTop10) {
+    itemsHtml = items.map((item, idx) => buildTop10Card(item, idx + 1)).join('');
+  } else {
+    itemsHtml = items.map(buildCard).join('');
+  }
+  return `<section class="${rowClass}">
+    <h2 class="row-title">${title}</h2>
+    <div class="row-slider">
+      <button class="slider-arrow left" data-dir="-1">&#8249;</button>
+      <div class="row-posters">${itemsHtml}</div>
+      <button class="slider-arrow right" data-dir="1">&#8250;</button>
+    </div>
+  </section>`;
+}
+
+function buildTop10Card(item, rank) {
+  const id = item.id;
+  const title = item.title || item.name || 'Unknown';
+  const poster = item.poster || item.thumbnail || item.image || '';
+  const type = item.type || 'movie';
+  return `<div class="poster-card top-10-card" data-id="${id}" data-type="${type}">
+    <div class="top-10-rank">${rank}</div>
+    <img src="${poster}" alt="${title}" loading="lazy" onerror="this.style.background='#222'" />
+    <div class="poster-overlay">
+      <div class="poster-title">${title}</div>
+    </div>
+  </div>`;
+}
+
+function buildContinueCard(item) {
+  const id = item.id;
+  const title = item.title || 'Unknown';
+  const poster = item.poster || item.thumbnail || item.image || '';
+  const progress = item.progress || 0;
+  const type = item.type || 'movie';
+  const remaining = Math.round((100 - progress) / 100 * (item.duration || 0) / 60);
+
+  return `
+    <div class="continue-card" data-id="${id}" data-type="${type}">
+      <div class="continue-card-media">
+        <img src="${poster}" alt="${title}" loading="lazy" onerror="this.style.background='#222'" />
+        <div class="continue-play-overlay">
+          <button class="continue-play-btn" data-play-id="${id}" data-play-type="${type}" title="Play">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          </button>
+        </div>
+        <div class="continue-progress">
+          <div class="continue-progress-bar" style="width:${progress}%"></div>
+        </div>
+      </div>
+      <div class="continue-card-info">
+        <div class="continue-card-title">${title}</div>
+        <div class="continue-card-meta">
+          ${remaining > 0 ? `${remaining}m left` : `${Math.round(progress)}% watched`}
+        </div>
+      </div>
+    </div>`;
+}
+
+function setupArrows() {
+  document.querySelectorAll('.slider-arrow').forEach(a => {
+    a.onclick = () => {
+      const p = a.closest('.row-slider').querySelector('.row-posters');
+      p.scrollBy({ left: parseInt(a.dataset.dir) * p.clientWidth * 0.75, behavior: 'smooth' });
+    };
+  });
+}
+
+function bindCards(container) {
+  container.querySelectorAll('.poster-card').forEach(card => {
+    card.onclick = (e) => {
+      if (e.target.closest('.poster-action-btn')) return;
+      openModal(card.dataset.id, card.dataset.type || 'movie');
+    };
+  });
+  container.querySelectorAll('.continue-card').forEach(card => {
+    card.onclick = (e) => {
+      if (e.target.closest('.continue-play-btn')) return;
+      openModal(card.dataset.id, card.dataset.type || 'movie');
+    };
+  });
+  container.querySelectorAll('.continue-play-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      showQualityPicker(btn.dataset.playId, btn.dataset.playType || 'movie', { id: btn.dataset.playId, title: btn.closest('.continue-card')?.querySelector('.continue-card-title')?.textContent || '' });
+    };
+  });
+  container.querySelectorAll('[data-play-id]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      showQualityPicker(btn.dataset.playId, btn.dataset.playType || 'movie', { id: btn.dataset.playId, title: btn.closest('.poster-card')?.querySelector('.poster-title')?.textContent || '' });
+    };
+  });
+  container.querySelectorAll('[data-list-id]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleList({
+        id: btn.dataset.listId,
+        title: btn.dataset.listTitle || '',
+        poster: btn.dataset.listPoster || '',
+        type: btn.dataset.listType || 'movie'
+      });
+      btn.classList.toggle('in-list', isInList(btn.dataset.listId));
+    };
+  });
+}
+
+// ===== LOAD HOME =====
+async function loadHome() {
+  rowsContainer.innerHTML = '<div style="display:flex;justify-content:center;padding:60px 0;"><div class="loading-spinner large"></div></div>';
+  
+  try {
+    const homeData = await fetchDavidHome();
+    if (!homeData) { rowsContainer.innerHTML = ''; return; }
+    
+    const rows = [];
+    
+    // Trending/Top 10
+    if (homeData.trending?.length) {
+      rows.push({ title: 'Top 10', items: homeData.trending.slice(0, 10), isTop10: true });
+    }
+    
+    // Continue Watching
+    if (continueWatching.length) {
+      const continueItems = continueWatching.filter(c => c.progress > 0 && c.progress < 95).slice(0, 6);
+      if (continueItems.length) {
+        rows.push({ title: 'Continue Watching', items: continueItems, isContinue: true });
+      }
+    }
+    
+    // Categories from API
+    const categoryMap = {
+      'popular': 'Popular',
+      'trending': 'Trending Now',
+      'action': 'Action Movies',
+      'comedy': 'Comedy',
+      'horror': 'Horror',
+      'drama': 'Drama',
+      'romance': 'Romance',
+      'sci-fi': 'Sci-Fi',
+      'thriller': 'Thriller',
+      'animation': 'Animation',
+      'nollywood': 'Nollywood'
+    };
+    
+    for (const [key, label] of Object.entries(categoryMap)) {
+      const items = homeData[key] || homeData[key.trim()] || [];
+      if (items.length) {
+        rows.push({ title: label, items: items.slice(0, 12) });
+      }
+    }
+    
+    if (rows.length) {
+      rowsContainer.innerHTML = rows.map(r => buildRow(r.title, r.items, r.isContinue, r.isTop10)).join('');
+      setupArrows();
+      bindCards(rowsContainer);
+      startHeroRotation();
+    } else {
+      rowsContainer.innerHTML = '<div class="no-results">No content available</div>';
+    }
+  } catch (e) {
+    console.warn('Load home error:', e);
+    rowsContainer.innerHTML = '<div class="no-results">Failed to load content</div>';
+  }
 }
